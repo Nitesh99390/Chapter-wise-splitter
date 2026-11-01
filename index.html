@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Chapter Splitter – Novel ko chapter-wise files me todein</title>
+<title>Chapter Splitter – Split novels into chapter-wise files</title>
 <meta name="description" content="Split any EPUB, TXT, HTML or Markdown novel into files of N chapters. Smart chapter detection, 100% in your browser." />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
 <link rel="stylesheet" href="css/style.css" />
@@ -15,12 +15,12 @@
     <span class="logo">📚</span>
     <div>
       <h1>Chapter Splitter</h1>
-      <p class="tag">Novel ko chapter-wise chhoti files me todein</p>
+      <p class="tag">Split any novel into smaller chapter-wise files</p>
     </div>
   </div>
   <div class="top-actions">
-    <span class="privacy" title="Files kabhi aapke device se bahar nahi jaati">🔒 File upload nahi hoti</span>
-    <div class="seg mode-seg" id="uiMode" title="Easy = sirf zaroori cheezein · Advanced = saare options">
+    <span class="privacy" title="Your files never leave your device">🔒 No uploads – 100% private</span>
+    <div class="seg mode-seg" id="uiMode" title="Easy = essentials only · Advanced = all options">
       <button data-v="simple" class="on">Easy</button>
       <button data-v="advanced">Advanced</button>
     </div>
@@ -31,25 +31,25 @@
 <main class="wrap">
   <!-- how it works -->
   <div class="howto" id="howto">
-    <div><span class="h-num">1</span><div><b>File chunein</b><small>EPUB ya TXT novel</small></div></div>
+    <div><span class="h-num">1</span><div><b>Choose a file</b><small>EPUB or TXT novel</small></div></div>
     <span class="h-arrow">→</span>
-    <div><span class="h-num">2</span><div><b>Chapters check karein</b><small>App khud dhoondh leta hai</small></div></div>
+    <div><span class="h-num">2</span><div><b>Check chapters</b><small>Detected automatically</small></div></div>
     <span class="h-arrow">→</span>
-    <div><span class="h-num">3</span><div><b>Download</b><small>Batayein ek file me kitne chapters</small></div></div>
+    <div><span class="h-num">3</span><div><b>Download</b><small>Pick chapters per file</small></div></div>
   </div>
 
   <!-- STEP 1: upload -->
   <section id="step-upload" class="card">
-    <div class="step-head"><span class="num">1</span><h2>Apni novel ki file chunein</h2></div>
+    <div class="step-head"><span class="num">1</span><h2>Choose your novel file</h2></div>
     <label id="dropzone" class="dropzone" tabindex="0">
       <input id="fileInput" type="file" accept=".epub,.txt,.text,.md,.markdown,.html,.htm,.xhtml" hidden />
       <div class="dz-icon">📂</div>
-      <div class="dz-title">Yahan click karein ya file drag karke chhod dein</div>
-      <div class="dz-sub">Chalta hai: <b>.epub</b>, <b>.txt</b>, <b>.html</b>, <b>.md</b> · English, हिंदी, 中文 sab</div>
+      <div class="dz-title">Click here or drag &amp; drop a file</div>
+      <div class="dz-sub">Supports <b>.epub</b>, <b>.txt</b>, <b>.html</b>, <b>.md</b> · English, हिंदी, 中文 and more</div>
     </label>
     <div class="upload-row">
-      <button id="sampleBtn" class="btn ghost small" type="button">✨ Pehle sample novel se try karein</button>
-      <label class="inline adv">Text encoding <span class="help" data-tip="Agar TXT file me ajeeb characters (????) dikhein to yahan se badlein. Normally 'Auto' theek hai.">?</span>
+      <button id="sampleBtn" class="btn ghost small" type="button">✨ Try with a sample novel</button>
+      <label class="inline adv">Text encoding <span class="help" data-tip="If a TXT file shows garbled characters (????), change this. 'Auto detect' works for most files.">?</span>
         <select id="encoding">
           <option value="auto">Auto detect</option>
           <option value="utf-8">UTF-8</option>
@@ -71,62 +71,62 @@
   <!-- STEP 2: chapters (with friendly result + one-click fixes) -->
   <section id="step-chapters" class="card hidden">
     <div class="step-head">
-      <span class="num">2</span><h2>Chapters check karein</h2>
+      <span class="num">2</span><h2>Check chapters</h2>
       <span id="detectBadge" class="badge"></span>
     </div>
 
     <div id="detectHints" class="hints"></div>
 
     <div class="toolbar">
-      <input id="search" type="search" placeholder="🔍 Chapter ka naam search karein…" />
+      <input id="search" type="search" placeholder="🔍 Search chapter titles…" />
       <div class="toolbar-btns">
-        <button class="btn ghost small" id="selAll">Sab select</button>
-        <button class="btn ghost small" id="selNone">Sab hatao</button>
+        <button class="btn ghost small" id="selAll">Select all</button>
+        <button class="btn ghost small" id="selNone">Select none</button>
         <button class="btn ghost small adv" id="selInvert">Invert</button>
         <span class="sel-range adv">
           <input id="rangeFrom" type="number" min="1" placeholder="From" />–<input id="rangeTo" type="number" min="1" placeholder="To" />
           <button class="btn ghost small" id="selRange">Select range</button>
         </span>
-        <button class="btn ghost small" id="resetEdits" title="Saare rename / merge / split wapas le lein">↺ Undo all</button>
+        <button class="btn ghost small" id="resetEdits" title="Revert all renames / merges / splits">↺ Undo all</button>
       </div>
     </div>
-    <p class="tiny-help">💡 Jo chapter file me nahi chahiye uska ✓ hata dein · Naam badalne ke liye title pe click karein · 👁 = padh kar dekhein · ⤒ = pichhle chapter se jod dein · ✂ = do hisso me todein</p>
+    <p class="tiny-help">💡 Untick ✓ chapters you don't want · Click a title to rename it · 👁 = preview · ⤒ = merge into previous chapter · ✂ = split into two</p>
     <div id="frontRow" class="front-row hidden"></div>
     <div class="chapter-table-wrap">
       <table class="chapter-table">
-        <thead><tr><th class="c-chk"><input type="checkbox" id="chkAll" checked title="Sab select / unselect" /></th><th class="c-no">#</th><th>Chapter</th><th class="c-words">Words</th><th class="c-act"></th></tr></thead>
+        <thead><tr><th class="c-chk"><input type="checkbox" id="chkAll" checked title="Select / unselect all" /></th><th class="c-no">#</th><th>Chapter</th><th class="c-words">Words</th><th class="c-act"></th></tr></thead>
         <tbody id="chapterBody"></tbody>
       </table>
-      <div id="emptyChapters" class="empty hidden">Koi chapter nahi mila 😕 — upar diye gaye "Try karein" buttons dabayein.</div>
+      <div id="emptyChapters" class="empty hidden">No chapters found 😕 — try one of the suggestion buttons above.</div>
     </div>
-    <div id="moreRow" class="more-row hidden"><button class="btn ghost small" id="showMore">Aur dikhayein</button></div>
+    <div id="moreRow" class="more-row hidden"><button class="btn ghost small" id="showMore">Show more</button></div>
 
     <!-- detection settings (advanced) -->
     <details id="detectDetails" class="adv-box">
-      <summary>⚙️ Chapter detection settings <small>(advanced — chapters galat milne par hi chhedein)</small></summary>
+      <summary>⚙️ Chapter detection settings <small>(advanced — only change these if chapters are detected incorrectly)</small></summary>
       <div class="grid2">
         <div>
           <div id="epubOpts" class="opt-group hidden">
-            <h3>EPUB se chapters kaise uthayein</h3>
+            <h3>How to read chapters from the EPUB</h3>
             <div class="seg" id="epubMode">
               <button data-v="auto" class="on">Auto</button>
-              <button data-v="toc">Book ki index (TOC)</button>
+              <button data-v="toc">Table of contents</button>
               <button data-v="text">Heading text</button>
-              <button data-v="spine">Har HTML file = 1 chapter</button>
+              <button data-v="spine">Each HTML file = 1 chapter</button>
             </div>
             <div class="row">
               <label class="inline">TOC depth
                 <select id="tocDepth"><option value="1">Level 1</option><option value="2">Level 1–2</option><option value="9" selected>All levels</option></select>
               </label>
-              <label class="check"><input type="checkbox" id="skipExtras" checked /> Cover / copyright / contents page skip karein</label>
+              <label class="check"><input type="checkbox" id="skipExtras" checked /> Skip cover / copyright / contents pages</label>
             </div>
           </div>
 
           <div class="opt-group" id="patternGroup">
-            <h3>Heading patterns <small>(kaunsi line ko chapter ki shuruaat maane)</small></h3>
+            <h3>Heading patterns <small>(which lines start a new chapter)</small></h3>
             <div id="patternList" class="pattern-list"></div>
-            <label class="block">Custom regex <small>(optional – sirf experts ke liye)</small>
-              <input id="customRe" type="text" placeholder="e.g. ^Kaand\s+(\d+)  or  ^Session\s+\d+" spellcheck="false" />
+            <label class="block">Custom regex <small>(optional – for experts)</small>
+              <input id="customRe" type="text" placeholder="e.g. ^Book\s+(\d+)  or  ^Session\s+\d+" spellcheck="false" />
             </label>
             <div id="customReErr" class="err hidden"></div>
           </div>
@@ -137,10 +137,10 @@
             <h3>Fine tuning</h3>
             <label class="block">Minimum chapter length <output id="minCharsOut">200</output> chars
               <input id="minChars" type="range" min="0" max="3000" step="50" value="200" />
-              <small class="hint">Isse chhote chapters (jaise contents list ki entries) agle chapter me merge ho jayenge.</small>
+              <small class="hint">Chapters shorter than this (e.g. table-of-contents entries) are merged into the next chapter.</small>
             </label>
-            <label class="check"><input type="checkbox" id="mergeSubtitle" checked /> Heading ke neeche wali line ko title me jodein <small>("Chapter 1" + "The Beginning")</small></label>
-            <label class="check"><input type="checkbox" id="blankBefore" /> Heading se pehle khali line zaroori ho</label>
+            <label class="check"><input type="checkbox" id="mergeSubtitle" checked /> Add the line below a heading to its title <small>("Chapter 1" + "The Beginning")</small></label>
+            <label class="check"><input type="checkbox" id="blankBefore" /> Require a blank line before headings</label>
           </div>
           <div class="stats" id="stats"></div>
         </div>
@@ -150,24 +150,24 @@
 
   <!-- STEP 3: split & export -->
   <section id="step-split" class="card hidden">
-    <div class="step-head"><span class="num">3</span><h2>Files banayein &amp; download karein</h2></div>
+    <div class="step-head"><span class="num">3</span><h2>Create &amp; download files</h2></div>
 
     <div class="grid2 split-grid">
       <div>
         <div class="opt-group">
-          <h3>Ek file me kitne chapters chahiye?</h3>
+          <h3>How many chapters per file?</h3>
           <div class="seg" id="splitMode">
-            <button data-v="per" class="on">Har file me N chapters</button>
+            <button data-v="per" class="on">N chapters per file</button>
             <button data-v="files">Total N files</button>
             <button data-v="ranges" class="adv">Custom ranges</button>
           </div>
 
           <div class="mode-panel" data-mode="per">
             <div class="big-number">
-              <button class="step-btn" data-step="-1" data-target="perFile" aria-label="kam">−</button>
+              <button class="step-btn" data-step="-1" data-target="perFile" aria-label="decrease">−</button>
               <input id="perFile" type="number" min="1" value="10" />
-              <button class="step-btn" data-step="1" data-target="perFile" aria-label="zyada">+</button>
-              <span>chapters har file me</span>
+              <button class="step-btn" data-step="1" data-target="perFile" aria-label="increase">+</button>
+              <span>chapters per file</span>
             </div>
             <div class="presets" data-target="perFile">
               <button>1</button><button>5</button><button>10</button><button>20</button><button>25</button><button>50</button><button>100</button>
@@ -175,29 +175,29 @@
           </div>
           <div class="mode-panel hidden" data-mode="files">
             <div class="big-number">
-              <button class="step-btn" data-step="-1" data-target="fileCount" aria-label="kam">−</button>
+              <button class="step-btn" data-step="-1" data-target="fileCount" aria-label="decrease">−</button>
               <input id="fileCount" type="number" min="1" value="5" />
-              <button class="step-btn" data-step="1" data-target="fileCount" aria-label="zyada">+</button>
-              <span>files (chapters barabar baant diye jayenge)</span>
+              <button class="step-btn" data-step="1" data-target="fileCount" aria-label="increase">+</button>
+              <span>files (chapters are split evenly)</span>
             </div>
             <div class="presets" data-target="fileCount">
               <button>2</button><button>3</button><button>4</button><button>5</button><button>10</button><button>20</button>
             </div>
           </div>
           <div class="mode-panel hidden" data-mode="ranges">
-            <label class="block">Ranges (chapter numbers, comma se alag)
+            <label class="block">Ranges (chapter numbers, comma separated)
               <input id="ranges" type="text" placeholder="1-10, 11-25, 26-50, 51-" spellcheck="false" />
             </label>
-            <small class="hint"><code>51-</code> = 51 se last tak · <code>7</code> = sirf chapter 7 · Numbers selected chapters ki list ke hisaab se.</small>
+            <small class="hint"><code>51-</code> = 51 to the end · <code>7</code> = chapter 7 only · Numbers refer to the list of selected chapters.</small>
           </div>
         </div>
 
         <div class="opt-group">
-          <h3>File kis type ki chahiye?</h3>
+          <h3>Output format</h3>
           <div class="format-cards" id="formatCards">
-            <button data-v="txt" class="on"><b>TXT</b><small>Simple text, har jagah khulti hai</small></button>
-            <button data-v="epub"><b>EPUB</b><small>E-reader / Kindle app</small></button>
-            <button data-v="html"><b>HTML</b><small>Browser me padhein</small></button>
+            <button data-v="txt" class="on"><b>TXT</b><small>Plain text, opens anywhere</small></button>
+            <button data-v="epub"><b>EPUB</b><small>E-readers / Kindle app</small></button>
+            <button data-v="html"><b>HTML</b><small>Read in a browser</small></button>
             <button data-v="md"><b>MD</b><small>Markdown</small></button>
           </div>
         </div>
@@ -223,43 +223,43 @@
         </div>
         <div class="opt-group">
           <h3>Content options</h3>
-          <label class="check"><input type="checkbox" id="optTitles" checked /> Har chapter ka title file me likhein</label>
-          <label class="check"><input type="checkbox" id="optFront" /> Front matter (intro / contents) pehli file me add karein</label>
-          <label class="check"><input type="checkbox" id="optHeader" /> File ke top par book name / author</label>
-          <label class="check"><input type="checkbox" id="optToc" checked /> HTML me table of contents</label>
-          <label class="check"><input type="checkbox" id="optCover" checked /> EPUB me original cover rakhein</label>
-          <label class="check"><input type="checkbox" id="optFolder" checked /> ZIP ke andar folder banayein</label>
+          <label class="check"><input type="checkbox" id="optTitles" checked /> Include chapter titles</label>
+          <label class="check"><input type="checkbox" id="optFront" /> Add front matter (intro / contents) to the first file</label>
+          <label class="check"><input type="checkbox" id="optHeader" /> Book title / author at the top of each file</label>
+          <label class="check"><input type="checkbox" id="optToc" checked /> Table of contents in HTML files</label>
+          <label class="check"><input type="checkbox" id="optCover" checked /> Keep the original cover in EPUB files</label>
+          <label class="check"><input type="checkbox" id="optFolder" checked /> Put files in a folder inside the ZIP</label>
         </div>
       </div>
     </div>
 
     <div class="plan">
       <div class="plan-head">
-        <h3>Ye files banengi <span id="planSummary" class="badge"></span></h3>
-        <button class="btn ghost small" id="togglePlan" type="button">List dikhayein</button>
+        <h3>Files to be created <span id="planSummary" class="badge"></span></h3>
+        <button class="btn ghost small" id="togglePlan" type="button">Show list</button>
       </div>
       <div id="planErr" class="err hidden"></div>
       <ol id="planList" class="plan-list hidden"></ol>
     </div>
 
     <div class="actions">
-      <button id="downloadZip" class="btn primary big">⬇️ Download karein (ZIP)</button>
-      <button id="downloadEach" class="btn ghost">Har file alag-alag download</button>
+      <button id="downloadZip" class="btn primary big">⬇️ Download all (ZIP)</button>
+      <button id="downloadEach" class="btn ghost">Download files separately</button>
     </div>
-    <p class="tiny-help">ZIP ek hi file hai jiske andar saari chapter files hain — download ke baad use "Extract" karein.</p>
+    <p class="tiny-help">The ZIP contains all chapter files — extract it after downloading.</p>
     <div id="progress" class="progress hidden"><div class="bar"><span></span></div><div class="ptext"></div></div>
   </section>
 
   <section class="card faq">
     <details>
-      <summary>❓ Madad / Help</summary>
+      <summary>❓ Help &amp; FAQ</summary>
       <ul>
-        <li><b>Ye app karta kya hai?</b> Ek badi novel file (jaise 500 chapters ka EPUB) ko chhoti files me baant deta hai — jaise har file me 10 chapters.</li>
-        <li><b>Chapters galat mil rahe hain?</b> Step 2 me upar "Try karein" buttons dabayein, ya <b>Advanced</b> mode on karke "Chapter detection settings" kholein.</li>
-        <li><b>Koi chapter nahi mila?</b> Shayad aapki file me headings sirf numbers hain ("1.", "002") — "Numbers wale headings" button dabayein.</li>
-        <li><b>Kuch chapters chhodne hain?</b> Step 2 ki list me unka ✓ hata dein.</li>
-        <li><b>Kindle pe padhna hai?</b> EPUB format chunein, phir Amazon ki "Send to Kindle" service se bhejein.</li>
-        <li><b>Meri file kahin upload hoti hai?</b> Nahi. Sab kuch aapke browser ke andar hota hai, internet band karke bhi chalega.</li>
+        <li><b>What does this app do?</b> It splits a large novel (e.g. a 500-chapter EPUB) into smaller files — for example 10 chapters per file.</li>
+        <li><b>Chapters detected incorrectly?</b> Use the suggestion buttons at the top of step 2, or switch to <b>Advanced</b> mode and open "Chapter detection settings".</li>
+        <li><b>No chapters found?</b> Your file may use bare numbers as headings ("1.", "002") — click the "Numbered headings" button.</li>
+        <li><b>Want to skip some chapters?</b> Untick them in the list in step 2.</li>
+        <li><b>Reading on Kindle?</b> Choose EPUB, then send the files with Amazon's "Send to Kindle" service.</li>
+        <li><b>Is my file uploaded anywhere?</b> No. Everything happens inside your browser — it even works offline.</li>
         <li>Shortcut: <kbd>Ctrl</kbd>+<kbd>Enter</kbd> = ZIP download.</li>
       </ul>
     </details>
@@ -267,23 +267,23 @@
 </main>
 
 <!-- preview modal -->
-<div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+<div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="modal-box">
     <div class="modal-head">
       <h3 id="modalTitle"></h3>
       <div>
-        <button class="icon-btn" id="modalPrev" title="Pichhla chapter">◀</button>
-        <button class="icon-btn" id="modalNext" title="Agla chapter">▶</button>
-        <button class="icon-btn" id="modalClose" title="Band karein">✕</button>
+        <button class="icon-btn" id="modalPrev" title="Previous chapter" aria-label="Previous chapter">◀</button>
+        <button class="icon-btn" id="modalNext" title="Next chapter" aria-label="Next chapter">▶</button>
+        <button class="icon-btn" id="modalClose" title="Close" aria-label="Close">✕</button>
       </div>
     </div>
     <div id="modalBody" class="modal-body"></div>
   </div>
 </div>
 
-<div id="toast" class="toast hidden"></div>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
-<footer class="foot">Made with ❤️ · Chapter Splitter · Sab processing aapke browser me hoti hai, koi upload nahi.</footer>
+<footer class="foot">Made with ❤️ · Chapter Splitter · All processing happens in your browser — nothing is uploaded.</footer>
 
 <script src="vendor/jszip.min.js"></script>
 <script src="js/parser.js"></script>

@@ -25,7 +25,10 @@
     search: '',
     detectTimer: null,
     job: null,           // {aborted} token of the running detection
-    loadJob: null        // {aborted} token of the running file load
+    loadJob: null,       // {aborted} token of the running file load
+    file: null,          // last loaded File (re-read when the encoding changes)
+    coverUrl: null,      // object URL of the shown cover (revoked on the next load)
+    busyExport: false    // a ZIP / multi-file download is running
   };
 
   /* ------------------------------------------------------------------ *
@@ -128,12 +131,25 @@
   /* ------------------------------------------------------------------ *
    * File loading
    * ------------------------------------------------------------------ */
+  const UNSUPPORTED = /\.(pdf|docx?|odt|rtf|mobi|azw3?|kfx|fb2|cbz|cbr|rar|7z|png|jpe?g|gif|webp|mp3|mp4|exe)$/i;
+  function setStepsVisible(on) { ['#step-chapters', '#step-split'].forEach(s => $(s).classList.toggle('hidden', !on)); }
+
   async function loadFile(file) {
     const info = $('#fileInfo');
     const mb = (file.size || 0) / 1048576;
+    if (UNSUPPORTED.test(file.name || '')) {
+      info.classList.remove('hidden');
+      info.innerHTML = '<div class="fi-main"><b>❌ ' + P.escapeHtml(file.name) + '</b><span class="meta err">This file type is not supported. Please choose an .epub, .txt, .html or .md file (convert PDF / MOBI / DOCX to EPUB first, e.g. with Calibre).</span></div>';
+      return;
+    }
+    if (!file.size) {
+      info.classList.remove('hidden');
+      info.innerHTML = '<div class="fi-main"><b>❌ ' + P.escapeHtml(file.name) + '</b><span class="meta err">This file is empty.</span></div>';
+      return;
+    }
     if (mb > MAX_FILE_MB) {
       info.classList.remove('hidden');
-      info.innerHTML = '<div class="fi-main"><b>❌ ' + P.escapeHtml(file.name) + '</b><span class="meta err">File ' + fmtSize(file.size) + ' ki hai — browser me ' + MAX_FILE_MB + ' MB tak ki file hi safely chal sakti hai.</span></div>';
+      info.innerHTML = '<div class="fi-main"><b>❌ ' + P.escapeHtml(file.name) + '</b><span class="meta err">File ' + fmtSize(file.size) + ' is too large — browsers can only safely handle files up to ' + MAX_FILE_MB + ' MB.</span></div>';
       return;
     }
     // cancel anything still running for the previous file
@@ -142,8 +158,11 @@
     const job = state.loadJob = { aborted: false };
     // free the previous book before reading the new one (keeps peak memory low)
     state.book = null; state.result = null; state.chapters = []; state.front = null;
+    state.file = file;
+    state.search = ''; $('#search').value = '';
+    if (state.coverUrl) { URL.revokeObjectURL(state.coverUrl); state.coverUrl = null; }
     $('#chapterBody').innerHTML = '';
-    $('#detectBadge').textContent = '⏳ File load ho rahi hai…';
+    $('#detectBadge').textContent = '⏳ Loading file…';
     $('#detectHints').innerHTML = '';
     $('#planList').innerHTML = '';
     $('#planSummary').textContent = '';
@@ -151,16 +170,21 @@
     $('#downloadEach').disabled = true;
     info.classList.remove('hidden');
     info.innerHTML = '<div class="fi-main"><b>⏳ ' + P.escapeHtml(file.name) + '</b><span class="meta">Reading… ' + fmtSize(file.size || 0) +
-      (mb > WARN_FILE_MB ? ' · badi file hai, thoda time lagega' : '') + '</span></div><button class="btn ghost small" id="cancelLoad">Cancel</button>';
-    $('#cancelLoad').onclick = () => { job.aborted = true; info.querySelector('.meta').textContent = 'Cancelled'; };
+      (mb > WARN_FILE_MB ? ' · large file, this may take a moment' : '') + '</span></div><button class="btn ghost small" id="cancelLoad">Cancel</button>';
+    $('#cancelLoad').onclick = () => {
+      job.aborted = true;
+      info.innerHTML = '<div class="fi-main"><b>' + P.escapeHtml(file.name) + '</b><span class="meta">Loading cancelled. Choose a file to start again.</span></div>';
+      $('#detectBadge').textContent = '';
+      setStepsVisible(false);
+    };
     const meta = t => { const m = info.querySelector('.meta'); if (m && !job.aborted) m.textContent = t; };
     try {
       const book = await R.readFile(file, $('#encoding').value, f => meta('Reading… ' + Math.round(f * 100) + '%'), job);
       if (job.aborted) return;
-      meta('Headings scan ho rahi hain…');
+      meta('Scanning headings…');
       const fullText = book.kind === 'text' ? book.text
-        : await P.runTask(R.bookTextIter(book), { signal: job, onProgress: f => meta('Text nikal rahe hain… ' + Math.round(f * 100) + '%') });
-      await updatePatternCounts(fullText, job, f => meta('Headings scan ho rahi hain… ' + Math.round(f * 100) + '%'));
+        : await P.runTask(R.bookTextIter(book), { signal: job, onProgress: f => meta('Extracting text… ' + Math.round(f * 100) + '%') });
+      await updatePatternCounts(fullText, job, f => meta('Scanning headings… ' + Math.round(f * 100) + '%'));
       if (job.aborted) return;
       state.book = book;
       showFileInfo(file, book);
@@ -170,16 +194,18 @@
       if (book.kind === 'text' && book.isMarkdown && !selectedPatterns().includes('markdown')) {
         const md = $('#patternList input[value="markdown"]'); if (md) md.checked = true;
       }
-      ['#step-chapters', '#step-split'].forEach(s => $(s).classList.remove('hidden'));
+      setStepsVisible(true);
       $('#step-chapters').scrollIntoView({ behavior: 'smooth', block: 'start' });
       await detect();
     } catch (e) {
       if (e && e.aborted) return;
       console.error(e);
       if (job.aborted) return;
-      const msg = isOom(e) ? 'Browser ki memory kam pad gayi. Doosre tabs band karke dobara try karein.' : (e.message || String(e));
+      const msg = isOom(e) ? 'The browser ran out of memory. Close other tabs and try again.' : (e.message || String(e));
       info.innerHTML = '<div class="fi-main"><b>❌ ' + P.escapeHtml(file.name) + '</b><span class="meta err">' + P.escapeHtml(msg) + '</span></div>';
-      toast('File read nahi ho payi: ' + msg, 5000);
+      $('#detectBadge').textContent = '';
+      setStepsVisible(false);
+      toast('Could not read the file: ' + msg, 5000);
     } finally {
       if (state.loadJob === job) state.loadJob = null;
     }
@@ -190,8 +216,9 @@
     const info = $('#fileInfo');
     let cover = '';
     if (book.cover) {
-      const url = URL.createObjectURL(new Blob([book.cover.data], { type: book.cover.type }));
-      cover = '<img src="' + url + '" alt="cover"/>';
+      if (state.coverUrl) URL.revokeObjectURL(state.coverUrl);
+      const url = state.coverUrl = URL.createObjectURL(new Blob([book.cover.data], { type: book.cover.type }));
+      cover = '<img src="' + url + '" alt="Book cover"/>';
     }
     const kind = book.kind === 'epub' ? 'EPUB · ' + book.docs.length + ' sections · TOC: ' + book.toc.length + ' entries'
       : 'Text · ' + (book.encoding || 'utf-8').toUpperCase() + ' · ' + fmtNum(book.text.length) + ' characters';
@@ -217,7 +244,7 @@
     const book = state.book;
     const t0 = performance.now();
     const badge = $('#detectBadge');
-    const busy = f => { badge.textContent = '⏳ Chapters dhoondh rahe hain… ' + Math.round(f * 100) + '%'; };
+    const busy = f => { badge.textContent = '⏳ Detecting chapters… ' + Math.round(f * 100) + '%'; };
     busy(0);
     document.documentElement.classList.add('busy');
     const textOpts = textOptions();
@@ -249,7 +276,7 @@
       console.error(e);
       if (state.job === job) {
         badge.textContent = '⚠ Error';
-        toast(isOom(e) ? 'Memory kam pad gayi — doosre tabs band karke dobara try karein.' : 'Chapters detect karte waqt error: ' + (e.message || e), 5000);
+        toast(isOom(e) ? 'Out of memory — close other tabs and try again.' : 'Error while detecting chapters: ' + (e.message || e), 5000);
       }
       return;
     } finally {
@@ -266,7 +293,7 @@
     }
     // pattern group is irrelevant for TOC / spine mode
     $('#patternGroup').style.opacity = (state.book.kind === 'epub' && res.mode !== 'text') ? .55 : 1;
-    const modeLabel = { toc: 'book ki index (TOC)', text: 'heading text', spine: 'HTML files' }[res.mode] || res.mode;
+    const modeLabel = { toc: 'table of contents', text: 'heading text', spine: 'HTML files' }[res.mode] || res.mode;
     const none = state.chapters.length === 1 && state.chapters[0].whole;
     $('#detectBadge').textContent = (none ? '0 chapters' : fmtNum(state.chapters.length) + ' chapters') +
       (state.book.kind === 'epub' ? ' · via ' + modeLabel : '');
@@ -284,16 +311,16 @@
    * ------------------------------------------------------------------ */
   const setEpubMode = v => setSeg('#epubMode', v, m => { state.epubMode = m; detect(); });
   const FIXES = {
-    numbered: { label: '🔢 Numbers wale headings (1. / 002)', run: () => setPattern('numbered', true) },
+    numbered: { label: '🔢 Numbered headings (1. / 002)', run: () => setPattern('numbered', true) },
     markdown: { label: '# Markdown headings', run: () => setPattern('markdown', true) },
     part: { label: 'Part / Volume headings', run: () => setPattern('part', true) },
-    spine: { label: '📄 Har HTML file = 1 chapter', run: () => setEpubMode('spine') },
-    toc: { label: '📑 Book ki index (TOC) se lein', run: () => setEpubMode('toc') },
-    text: { label: '🔤 Heading text se dhoondhein', run: () => setEpubMode('text') },
-    mergeShort: { label: '🧹 Chhote chapters auto-merge karein', run: () => { const r = $('#minChars'); r.value = Math.min(3000, (parseInt(r.value, 10) || 0) + 600); $('#minCharsOut').textContent = r.value; detect(); } },
-    blank: { label: 'Sirf khali line ke baad wali headings', run: () => { $('#blankBefore').checked = true; detect(); } },
-    advanced: { label: '⚙️ Saari settings dikhayein', run: () => { setUiMode('advanced'); const d = $('#detectDetails'); d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
-    goSplit: { label: '✅ Sab sahi hai → Download pe chalein', primary: true, run: () => $('#step-split').scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+    spine: { label: '📄 Each HTML file = 1 chapter', run: () => setEpubMode('spine') },
+    toc: { label: '📑 Use the table of contents', run: () => setEpubMode('toc') },
+    text: { label: '🔤 Detect from heading text', run: () => setEpubMode('text') },
+    mergeShort: { label: '🧹 Auto-merge short chapters', run: () => { const r = $('#minChars'); r.value = Math.min(3000, (parseInt(r.value, 10) || 0) + 600); $('#minCharsOut').textContent = r.value; detect(); } },
+    blank: { label: 'Only headings after a blank line', run: () => { $('#blankBefore').checked = true; detect(); } },
+    advanced: { label: '⚙️ Show all settings', run: () => { setUiMode('advanced'); const d = $('#detectDetails'); d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
+    goSplit: { label: '✅ Looks good → Go to download', primary: true, run: () => $('#step-split').scrollIntoView({ behavior: 'smooth', block: 'start' }) }
   };
   function setPattern(k, on) {
     const el = $('#patternList input[value="' + k + '"]');
@@ -315,19 +342,19 @@
       if (textMode) ['numbered', 'markdown', 'part'].forEach(k => { if (!sel.includes(k) && (patternCounts[k] || 0) >= 2) f.push(k); });
       if (isEpub) { if (state.epubMode !== 'spine') f.push('spine'); if (state.epubMode !== 'text') f.push('text'); }
       f.push('advanced');
-      add('warn', '😕', 'Koi chapter nahi mila.', 'Ghabrayein nahi — neeche ek button dabakar dobara try karein. Kuch nahi hua to poori book ek hi file me download ho jayegi.', f);
+      add('warn', '😕', 'No chapters found.', 'No worries — try one of the buttons below. If nothing works, the whole book will be exported as a single file.', f);
     } else {
       const avg = ch.reduce((a, c) => a + c.words, 0) / ch.length;
       const shortN = ch.filter(c => c.words < avg * 0.15).length;
       const tiny = ch.length >= 3 && shortN / ch.length > 0.2;
       const few = ch.length <= 2 && textMode && ['numbered', 'markdown'].some(k => !sel.includes(k) && (patternCounts[k] || 0) >= 5);
       if (tiny) {
-        add('warn', '🤔', fmtNum(ch.length) + ' chapters mile, par ' + shortN + ' bahut chhote hain.', 'Shayad contents list ya galat headings chapter ban gaye. Ye try karein:', [
+        add('warn', '🤔', fmtNum(ch.length) + ' chapters found, but ' + shortN + ' are very short.', 'A table of contents or false headings may have been detected as chapters. Try:', [
           'mergeShort', isEpub && state.epubMode !== 'toc' && state.book.toc.length ? 'toc' : null, isEpub && state.epubMode !== 'text' ? 'text' : null, textMode && !$('#blankBefore').checked ? 'blank' : null, 'advanced']);
       } else if (few) {
-        add('warn', '🤔', 'Sirf ' + ch.length + ' chapter' + (ch.length > 1 ? 's' : '') + ' mila.', 'Lagta hai is file me headings alag style ki hain. Ye try karein:', ['numbered', 'markdown', 'advanced']);
+        add('warn', '🤔', 'Only ' + ch.length + ' chapter' + (ch.length > 1 ? 's' : '') + ' found.', 'This file seems to use a different heading style. Try:', ['numbered', 'markdown', 'advanced']);
       } else {
-        add('ok', '🎉', fmtNum(ch.length) + ' chapters mil gaye!', 'Neeche list ek baar dekh lein. Jo chapter nahi chahiye uska ✓ hata dein. Sab theek lage to seedha download pe chalein.', ['goSplit', 'advanced']);
+        add('ok', '🎉', fmtNum(ch.length) + ' chapters found!', 'Have a quick look at the list below and untick any chapters you don\'t need. If everything looks right, go straight to download.', ['goSplit', 'advanced']);
       }
     }
     box.innerHTML = cards.map(c => '<div class="hint-card ' + c.cls + '"><span class="hi">' + c.icon + '</span><div class="ht"><b>' + P.escapeHtml(c.title) + '</b><small>' + P.escapeHtml(c.sub) + '</small></div>' +
@@ -374,20 +401,22 @@
         '<td class="c-chk"><input type="checkbox" class="rowchk"' + (c.selected ? ' checked' : '') + '/></td>' +
         '<td class="c-no">' + (pos + 1) + '</td>' +
         '<td><span class="c-title' + (c.edited ? ' edited' : '') + '" contenteditable="plaintext-only" spellcheck="false">' + P.escapeHtml(c.title) + '</span></td>' +
-        '<td class="c-words" title="' + (short ? 'Bahut chhota chapter – shayad galat detection' : '') + '">' + fmtNum(c.words) + '</td>' +
+        '<td class="c-words" title="' + (short ? 'Very short chapter – possibly a false detection' : '') + '">' + fmtNum(c.words) + '</td>' +
         '<td class="c-act"><button class="row-btn" data-act="preview" title="Preview">👁</button>' +
         (pos > 0 ? '<button class="row-btn" data-act="merge" title="Merge into previous chapter">⤒</button>' : '') +
-        '<button class="row-btn" data-act="split" title="Isi chapter ko yahan se 2 me todein (preview me)">✂</button></td></tr>';
+        '<button class="row-btn" data-act="split" title="Split this chapter in two (choose where in the preview)">✂</button></td></tr>';
     });
     body.innerHTML = rows.join('');
-    $('#emptyChapters').classList.toggle('hidden', state.chapters.length > 0);
+    const empty = $('#emptyChapters');
+    empty.textContent = state.chapters.length ? 'No chapters match “' + state.search.trim() + '”.' : 'No chapters found 😕 — try one of the suggestion buttons above.';
+    empty.classList.toggle('hidden', list.length > 0);
     $('#moreRow').classList.toggle('hidden', list.length <= state.shown);
     $('#showMore').textContent = 'Show more (' + fmtNum(list.length - state.shown) + ' remaining)';
     $('#chkAll').checked = state.chapters.length > 0 && state.chapters.every(c => c.selected);
     const fr = $('#frontRow');
     if (state.front && state.front.text && state.front.text.trim()) {
       fr.classList.remove('hidden');
-      fr.innerHTML = '<span>📄 Front matter (pehle chapter se pehle ka text): <b>' + fmtNum(P.countWords(state.front.text)) + '</b> words</span><button class="btn ghost small" id="previewFront">Preview</button>';
+      fr.innerHTML = '<span>📄 Front matter (text before the first chapter): <b>' + fmtNum(P.countWords(state.front.text)) + '</b> words</span><button class="btn ghost small" id="previewFront">Preview</button>';
       $('#previewFront').onclick = () => openPreview(-1);
     } else fr.classList.add('hidden');
   }
@@ -419,12 +448,15 @@
     prev.edited = true;
     state.chapters.splice(i, 1);
     reindex();
-    toast('“' + cur.title + '” ko pichhle chapter me merge kar diya');
+    toast('“' + cur.title + '” merged into the previous chapter');
   }
+
+  /** blank-line paragraphs or one paragraph per line – decided from the FULL text, same for preview + split */
+  const paraMode = text => /\n[^\S\n]*\n/.test(text);
 
   function splitChapterAt(i, paraIndex) {
     const c = state.chapters[i];
-    const paras = P.textToParagraphs(c.text);
+    const paras = P.textToParagraphs(c.text, paraMode(c.text));
     if (paraIndex <= 0 || paraIndex >= paras.length) return;
     const newTitle = paras[paraIndex].length <= 80 ? paras[paraIndex] : c.title + ' (part 2)';
     const restStart = paras[paraIndex].length <= 80 ? paraIndex + 1 : paraIndex;
@@ -434,7 +466,7 @@
     state.chapters.splice(i, 1, a, b);
     reindex();
     closePreview();
-    toast('Chapter 2 hisso me toot gaya: “' + newTitle + '”');
+    toast('Chapter split in two: “' + newTitle + '”');
   }
 
   function reindex() {
@@ -451,20 +483,20 @@
     previewIndex = i;
     const c = i === -1 ? state.front : state.chapters[i];
     if (!c) return;
-    $('#modalTitle').textContent = (i >= 0 ? (i + 1) + '. ' : '') + c.title + (splitMode ? ' — split karne ke liye paragraph pe click karein' : '');
+    $('#modalTitle').textContent = (i >= 0 ? (i + 1) + '. ' : '') + c.title + (splitMode ? ' — click a paragraph to start a new chapter there' : '');
     // only the start of very long chapters is rendered (keeps the modal fast for 50 MB books);
     // paragraph indices stay identical to splitChapterAt() because the paragraph mode is fixed from the full text
     const big = c.text.length > PREVIEW_CHARS;
-    const blankMode = /\n[^\S\n]*\n/.test(big ? c.text.slice(0, PREVIEW_CHARS * 4) : c.text);
+    const blankMode = paraMode(c.text);
     const paras = P.textToParagraphs(big ? c.text.slice(0, PREVIEW_CHARS) : c.text, blankMode);
     if (big && paras.length > 1) paras.pop(); // last one may be cut in the middle
     const maxP = 400;
     $('#modalBody').innerHTML = (paras.length ? paras.slice(0, maxP).map((p, k) =>
-      '<p data-k="' + k + '"' + (splitMode && k > 0 ? ' class="splittable" title="Yahan se naya chapter shuru karein" style="cursor:pointer"' : '') + '>' + P.escapeHtml(p) + '</p>').join('') : '<p><i>(empty)</i></p>') +
-      (paras.length > maxP || big ? '<p><i>… aage aur text hai (preview me sirf shuru ka hissa dikhaya gaya hai)</i></p>' : '');
+      '<p data-k="' + k + '"' + (splitMode && k > 0 ? ' class="splittable" title="Start a new chapter here" style="cursor:pointer"' : '') + '>' + P.escapeHtml(p) + '</p>').join('') : '<p><i>(empty)</i></p>') +
+      (paras.length > maxP || big ? '<p><i>… more text follows (the preview only shows the beginning)</i></p>' : '');
     $('#modalBody').onclick = splitMode ? (e => {
       const p = e.target.closest('p.splittable');
-      if (p && confirm('Is paragraph se naya chapter shuru karein?\n\n“' + p.textContent.slice(0, 80) + '”')) splitChapterAt(i, +p.dataset.k);
+      if (p && confirm('Start a new chapter at this paragraph?\n\n“' + p.textContent.slice(0, 80) + '”')) splitChapterAt(i, +p.dataset.k);
     }) : null;
     $('#modalPrev').disabled = i <= 0;
     $('#modalNext').disabled = i < 0 || i >= state.chapters.length - 1;
@@ -495,6 +527,7 @@
       includeCover: $('#optCover').checked,
       cover: state.book && state.book.cover,
       numbering: $('#numbering').value,
+      totalChapters: state.chapters.length, // zero padding is based on the full list (preview == export)
       front: state.front
     };
   }
@@ -505,27 +538,19 @@
     const err = $('#planErr');
     if (error) { err.textContent = error; err.classList.remove('hidden'); } else err.classList.add('hidden');
     const o = exportOptions();
-    const ext = '.' + o.format;
-    const totalChapters = state.chapters.length;
     const list = $('#planList');
-    const items = groups.slice(0, PLAN_PREVIEW).map(([a, b], g) => {
-      const first = selected[a], last = selected[b];
-      if (!first) return '';
-      const start = o.numbering === 'sequential' ? a + 1 : first.index + 1;
-      const end = o.numbering === 'sequential' ? b + 1 : last.index + 1;
-      const name = X.buildName(o.template, {
-        book: P.sanitizeFilename(o.book), start, end, part: g + 1, totalParts: groups.length,
-        totalChapters: o.numbering === 'sequential' ? selected.length : totalChapters, count: b - a + 1,
-        firstTitle: P.sanitizeFilename(first.title).slice(0, 60), lastTitle: P.sanitizeFilename(last.title).slice(0, 60)
-      }) + ext;
-      const words = selected.slice(a, b + 1).reduce((s, c) => s + c.words, 0);
-      return '<li><span class="pn" title="' + P.escapeHtml(name) + '">📄 ' + P.escapeHtml(name) + '</span><span class="pc">' + (b - a + 1) + ' ch · ' + fmtNum(words) + ' w <button data-g="' + g + '" title="Sirf ye file download karein">⬇</button></span></li>';
+    // same naming code as the real export -> preview names always match the downloaded files
+    const plan = X.planFiles(selected, groups, o);
+    const items = plan.slice(0, PLAN_PREVIEW).map(f => {
+      let words = 0;
+      for (let k = f.a; k <= f.b; k++) words += selected[k].words;
+      return '<li><span class="pn" title="' + P.escapeHtml(f.name) + '">📄 ' + P.escapeHtml(f.name) + '</span><span class="pc">' + f.count + ' ch · ' + fmtNum(words) + ' w <button data-g="' + f.g + '" title="Download only this file" aria-label="Download ' + P.escapeHtml(f.name) + '">⬇</button></span></li>';
     });
-    if (groups.length > PLAN_PREVIEW) items.push('<li><span class="pc">… aur ' + fmtNum(groups.length - PLAN_PREVIEW) + ' files</span></li>');
+    if (groups.length > PLAN_PREVIEW) items.push('<li><span class="pc">… and ' + fmtNum(groups.length - PLAN_PREVIEW) + ' more files</span></li>');
     list.innerHTML = items.join('');
     const per = groups.length ? Math.round(selected.length / groups.length) : 0;
     $('#planSummary').textContent = fmtNum(selected.length) + ' chapters → ' + fmtNum(groups.length) + ' file' + (groups.length === 1 ? '' : 's') +
-      (groups.length > 1 && state.splitMode !== 'per' ? ' (har file me ~' + per + ')' : '');
+      (groups.length > 1 && state.splitMode !== 'per' ? ' (~' + per + ' per file)' : '');
     const disabled = !groups.length || !!error;
     $('#downloadZip').disabled = disabled;
     $('#downloadEach').disabled = disabled;
@@ -542,11 +567,12 @@
     const selected = state.chapters.filter(c => c.selected);
     const { groups, error } = currentGroups(selected);
     if (error) { toast(error, 3500); return null; }
-    if (state.job) { toast('Chapters abhi detect ho rahe hain, ek second rukiye…'); return null; }
+    if (!groups.length) { toast('Select at least one chapter first.', 3500); return null; }
+    if (state.job) { toast('Chapters are still being detected, please wait a moment…'); return null; }
     const o = exportOptions();
-    progress(0, 'Files ban rahi hain…');
+    progress(0, 'Creating files…');
     await tick();
-    const files = await X.buildFiles(JSZip, selected, groups, o, f => progress(f * 0.7, 'Files ban rahi hain… ' + Math.round(f * 100) + '%'));
+    const files = await X.buildFiles(JSZip, selected, groups, o, f => progress(f * 0.7, 'Creating files… ' + Math.round(f * 100) + '%'));
     return { files, o };
   }
 
@@ -560,40 +586,50 @@
   }
 
   async function downloadZip() {
-    const btn = $('#downloadZip');
-    btn.disabled = true;
+    if (state.busyExport) return;
+    state.busyExport = true;
+    $('#downloadZip').disabled = true; $('#downloadEach').disabled = true;
     try {
       const r = await build();
       if (!r) return;
       const folder = $('#optFolder').checked ? r.o.book + ' (' + r.o.format.toUpperCase() + ')' : '';
-      const blob = await X.zipFiles(JSZip, r.files, folder, f => progress(0.7 + f * 0.3, 'ZIP pack ho raha hai… ' + Math.round(f * 100) + '%'));
+      const blob = await X.zipFiles(JSZip, r.files, folder, f => progress(0.7 + f * 0.3, 'Packing ZIP… ' + Math.round(f * 100) + '%'));
       saveBlob(blob, P.sanitizeFilename(r.o.book + ' - split ' + r.o.format.toUpperCase()) + '.zip');
-      progress(1, '✅ ' + r.files.length + ' files · ' + fmtSize(blob.size) + ' — download shuru ho gaya');
+      progress(1, '✅ ' + r.files.length + ' files · ' + fmtSize(blob.size) + ' — download started');
       toast('✅ ZIP ready: ' + r.files.length + ' files');
       saveSettings();
     } catch (e) {
       console.error(e); progress(null);
-      toast(isOom(e) ? 'Memory kam pad gayi. Format TXT karein ya "Har file alag" se download karein.' : 'Error: ' + (e.message || e), 5000);
-    } finally { btn.disabled = false; }
+      toast(isOom(e) ? 'Out of memory. Switch to TXT or use "Download files separately".' : 'Error: ' + (e.message || e), 5000);
+    } finally { state.busyExport = false; renderPlan(); }
   }
 
   async function downloadEach() {
-    let r;
-    try { r = await build(); } catch (e) { console.error(e); progress(null); toast('Error: ' + (e.message || e), 5000); return; }
-    if (!r) return;
-    if (r.files.length > 15 && !confirm(r.files.length + ' files alag-alag download hongi. Browser permission maang sakta hai. Continue?')) { progress(null); return; }
-    for (let i = 0; i < r.files.length; i++) {
-      const f = r.files[i];
-      saveBlob(new Blob([f.data], { type: f.mime }), f.name);
-      progress((i + 1) / r.files.length, 'Downloading ' + (i + 1) + ' / ' + r.files.length);
-      await new Promise(res => setTimeout(res, 350));
-    }
-    progress(1, '✅ ' + r.files.length + ' files downloaded');
+    if (state.busyExport) return;
+    state.busyExport = true;
+    $('#downloadZip').disabled = true; $('#downloadEach').disabled = true;
+    try {
+      const r = await build();
+      if (!r) { progress(null); return; }
+      if (r.files.length > 15 && !confirm(r.files.length + ' files will be downloaded one by one. Your browser may ask for permission. Continue?')) { progress(null); return; }
+      for (let i = 0; i < r.files.length; i++) {
+        const f = r.files[i];
+        saveBlob(new Blob([f.data], { type: f.mime }), f.name);
+        progress((i + 1) / r.files.length, 'Downloading ' + (i + 1) + ' / ' + r.files.length);
+        await new Promise(res => setTimeout(res, 350));
+      }
+      progress(1, '✅ ' + r.files.length + ' file' + (r.files.length === 1 ? '' : 's') + ' downloaded');
+    } catch (e) {
+      console.error(e); progress(null);
+      toast(isOom(e) ? 'Out of memory — close other tabs and try again.' : 'Error: ' + (e.message || e), 5000);
+    } finally { state.busyExport = false; renderPlan(); }
   }
 
   async function downloadOne(g) {
+    if (state.job) { toast('Chapters are still being detected, please wait a moment…'); return; }
     const selected = state.chapters.filter(c => c.selected);
-    const { groups } = currentGroups(selected);
+    const { groups, error } = currentGroups(selected);
+    if (error) { toast(error, 3500); return; }
     if (!groups[g]) return;
     const o = Object.assign(exportOptions(), { onlyGroup: g });
     try {
@@ -611,7 +647,7 @@
     window.addEventListener('error', e => { if (e && e.message && !/ResizeObserver/.test(e.message)) toast('⚠ ' + e.message, 5000); });
     window.addEventListener('unhandledrejection', e => {
       const r = e && e.reason; if (r && r.aborted) { e.preventDefault(); return; }
-      toast('⚠ ' + (isOom(r) ? 'Memory kam pad gayi — doosre tabs band karke dobara try karein.' : (r && r.message) || r), 5000);
+      toast('⚠ ' + (isOom(r) ? 'Out of memory — close other tabs and try again.' : (r && r.message) || r), 5000);
     });
     const saved = loadSettings();
     renderPatterns(saved);
@@ -628,11 +664,22 @@
     const dz = $('#dropzone'), fi = $('#fileInput');
     fi.addEventListener('change', () => { if (fi.files[0]) loadFile(fi.files[0]); fi.value = ''; });
     dz.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fi.click(); } });
-    ['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
-    ['dragleave', 'drop'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); if (ev === 'drop' || e.target === dz) dz.classList.remove('drag'); }));
-    document.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) loadFile(f); });
+    let dragDepth = 0;
+    const hasFiles = e => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+    document.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; dz.classList.add('drag'); });
+    document.addEventListener('dragover', e => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+    document.addEventListener('dragleave', e => { if (!hasFiles(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) dz.classList.remove('drag'); });
+    document.addEventListener('drop', e => {
+      if (!hasFiles(e)) return;
+      e.preventDefault(); dragDepth = 0; dz.classList.remove('drag');
+      const f = e.dataTransfer.files[0];
+      if (f) loadFile(f);
+    });
     $('#sampleBtn').onclick = () => loadFile(new File([CS.SAMPLE.text], CS.SAMPLE.name, { type: 'text/plain' }));
-    $('#encoding').onchange = () => { saveSettings(); if (state.book && state.book.kind === 'text') toast('Encoding badalne ke liye file dobara choose karein'); };
+    $('#encoding').onchange = () => {
+      saveSettings();
+      if (state.file && state.book && state.book.kind === 'text') { toast('Re-reading the file with the new encoding…'); loadFile(state.file); }
+    };
 
     // detection settings
     bindSeg('#epubMode', v => { state.epubMode = v; detect(); });
@@ -659,16 +706,18 @@
     $('#search').addEventListener('input', e => { state.search = e.target.value; state.shown = PAGE; renderChapters(); });
     $('#showMore').onclick = () => { state.shown += PAGE; renderChapters(); };
     const setAll = fn => { state.chapters.forEach((c, i) => { c.selected = fn(c, i); }); renderChapters(); renderPlan(); };
-    $('#chkAll').onchange = e => setAll(() => e.target.checked);
-    $('#selAll').onclick = () => setAll(() => true);
-    $('#selNone').onclick = () => setAll(() => false);
-    $('#selInvert').onclick = () => setAll(c => !c.selected);
+    // while searching, the bulk buttons only touch the chapters that match the search
+    const setVisible = fn => { const vis = new Set(visibleChapters()); setAll((c, i) => vis.has(c) ? fn(c, i) : c.selected); };
+    $('#chkAll').onchange = e => setVisible(() => e.target.checked);
+    $('#selAll').onclick = () => setVisible(() => true);
+    $('#selNone').onclick = () => setVisible(() => false);
+    $('#selInvert').onclick = () => setVisible(c => !c.selected);
     $('#selRange').onclick = () => {
       const a = parseInt($('#rangeFrom').value, 10) || 1, b = parseInt($('#rangeTo').value, 10) || state.chapters.length;
       setAll((c, i) => i + 1 >= Math.min(a, b) && i + 1 <= Math.max(a, b));
       toast('Chapters ' + Math.min(a, b) + '–' + Math.max(a, b) + ' selected');
     };
-    $('#resetEdits').onclick = () => { if (confirm('Saare renames / merges / splits hata dein?')) detect(); };
+    $('#resetEdits').onclick = () => { if (confirm('Revert all renames, merges and splits?')) detect(); };
 
     // modal
     $('#modalClose').onclick = closePreview;
@@ -681,7 +730,7 @@
         if (e.key === 'ArrowLeft' && previewIndex > 0) openPreview(previewIndex - 1);
         if (e.key === 'ArrowRight' && previewIndex >= 0 && previewIndex < state.chapters.length - 1) openPreview(previewIndex + 1);
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && state.chapters.length) { e.preventDefault(); downloadZip(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && state.chapters.length && !$('#downloadZip').disabled) { e.preventDefault(); downloadZip(); }
     });
 
     // split options
@@ -698,6 +747,11 @@
       renderPlan(); saveSettings();
     }));
     ['perFile', 'fileCount', 'ranges', 'template', 'bookTitle', 'bookAuthor'].forEach(id => $('#' + id).addEventListener('input', () => { renderPlan(); saveSettings(); }));
+    ['perFile', 'fileCount'].forEach(id => $('#' + id).addEventListener('change', e => {
+      const v = parseInt(e.target.value, 10);
+      e.target.value = v >= 1 ? v : 1;
+      renderPlan(); saveSettings();
+    }));
     ['numbering', 'optTitles', 'optFront', 'optHeader', 'optToc', 'optCover', 'optFolder'].forEach(id => $('#' + id).addEventListener('change', () => { renderPlan(); saveSettings(); }));
     $('#tokens').addEventListener('click', e => {
       const t = e.target.dataset.t; if (!t) return;
@@ -709,7 +763,7 @@
     $('#planList').addEventListener('click', e => { const b = e.target.closest('button[data-g]'); if (b) downloadOne(+b.dataset.g); });
     $('#togglePlan').onclick = () => {
       const l = $('#planList'); l.classList.toggle('hidden');
-      $('#togglePlan').textContent = l.classList.contains('hidden') ? 'List dikhayein' : 'List chhupayein';
+      $('#togglePlan').textContent = l.classList.contains('hidden') ? 'Show list' : 'Hide list';
     };
     $('#detectHints').addEventListener('click', e => { const b = e.target.closest('button[data-fix]'); if (b && FIXES[b.dataset.fix]) FIXES[b.dataset.fix].run(); });
     bindSeg('#uiMode', setUiMode);

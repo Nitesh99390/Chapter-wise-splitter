@@ -90,6 +90,26 @@
     /* ---------- grouping ---------- */
     ok(JSON.stringify(P.makeGroups(7, { mode: 'files', files: 3 }).groups) === '[[0,2],[3,4],[5,6]]', 'groups: even distribution');
     { const g = P.makeGroups(5, { mode: 'ranges', ranges: '9-12' }); ok(!!g.error && Array.isArray(g.groups) && g.groups.length === 0, 'groups: out-of-range error returns empty groups'); }
+
+    /* ---------- regression: bug fixes ---------- */
+    ok(R.resolvePath('OEBPS/content.opf', 'text/100%.xhtml') === 'OEBPS/text/100%.xhtml', 'resolvePath: malformed % escape does not throw');
+    {
+      // plan preview names must equal exported names (padding + duplicate names)
+      const chs = Array.from({ length: 12 }, (_, i) => ({ index: i, title: 'Same', text: 'x' }));
+      const groups = P.makeGroups(12, { mode: 'per', per: 5 }).groups;
+      const o = { format: 'txt', template: '{first}', book: 'B', numbering: 'original', includeTitles: true, totalChapters: 12 };
+      const plan = X.planFiles(chs, groups, o).map(f => f.name);
+      const built = (await X.buildFiles(JSZip, chs, groups, o)).map(f => f.name);
+      ok(JSON.stringify(plan) === JSON.stringify(built) && new Set(built).size === 3, 'planFiles: preview names == exported names (deduped)', built.join(', '));
+      const sel = chs.slice(0, 9); // padding uses the full list length, not the selected subset
+      ok(X.planFiles(sel, [[0, 8]], Object.assign({}, o, { template: '{range}' }))[0].name === '01-09.txt', 'planFiles: zero padding from full list');
+    }
+    {
+      const files = await X.buildFiles(JSZip, [{ index: 0, title: 'A', text: 'hello' }], [[0, 0]],
+        { format: 'epub', book: 'B', template: '{book}', includeTitles: true, includeCover: true, cover: { name: 'cover', type: 'image/png', data: new Uint8Array([137, 80, 78, 71]) } });
+      const z = await JSZip.loadAsync(files[0].data);
+      ok(!!z.file('OEBPS/cover.png'), 'epub: cover without extension gets one from its MIME type', Object.keys(z.files).join(','));
+    }
   } catch (e) {
     ok(false, 'exception', e && (e.stack || e.message || e));
   }

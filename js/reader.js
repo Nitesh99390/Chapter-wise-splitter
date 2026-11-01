@@ -93,8 +93,11 @@
   /* ------------------------------------------------------------------ *
    * EPUB
    * ------------------------------------------------------------------ */
+  /** decodeURIComponent that never throws (EPUBs in the wild contain hrefs like "100%.xhtml") */
+  function safeDecode(s) { try { return decodeURIComponent(s); } catch (e) { return s; } }
+
   function resolvePath(base, rel) {
-    rel = decodeURIComponent(String(rel).split('#')[0]);
+    rel = safeDecode(String(rel).split('#')[0]);
     if (/^[a-z]+:/i.test(rel)) return rel;
     const parts = (rel.startsWith('/') ? [] : base.split('/').slice(0, -1));
     for (const seg of rel.replace(/^\//, '').split('/')) {
@@ -117,7 +120,7 @@
   async function readEpub(buffer, onProgress, signal) {
     if (typeof JSZip === 'undefined') throw new Error('JSZip failed to load');
     let zip;
-    try { zip = await JSZip.loadAsync(buffer); } catch (e) { throw new Error('EPUB khul nahi payi (file kharab ya adhuri hai): ' + (e.message || e)); }
+    try { zip = await JSZip.loadAsync(buffer); } catch (e) { throw new Error('Could not open the EPUB (the file may be damaged or incomplete): ' + (e.message || e)); }
     const fileMap = {};
     zip.forEach((path, f) => { fileMap[path.toLowerCase()] = f; });
     const getFile = p => zip.file(p) || fileMap[String(p).toLowerCase()] || null;
@@ -216,7 +219,7 @@
         const a = Array.from(li.children).find(c => c.localName === 'a' || c.localName === 'span');
         if (a && a.getAttribute('href')) {
           const href = a.getAttribute('href');
-          out.push({ title: textOf(a), file: resolvePath(base, href), frag: href.includes('#') ? decodeURIComponent(href.split('#')[1]) : null, depth });
+          out.push({ title: textOf(a), file: resolvePath(base, href), frag: href.includes('#') ? safeDecode(href.split('#')[1]) : null, depth });
         }
         const sub = Array.from(li.children).find(c => c.localName === 'ol' || c.localName === 'ul');
         if (sub) walk(sub, depth + 1);
@@ -234,7 +237,7 @@
         const label = firstTag(np, 'text');
         const content = Array.from(np.children).find(c => c.localName === 'content');
         const src = content && content.getAttribute('src');
-        if (src) out.push({ title: textOf(label), file: resolvePath(base, src), frag: src.includes('#') ? decodeURIComponent(src.split('#')[1]) : null, depth });
+        if (src) out.push({ title: textOf(label), file: resolvePath(base, src), frag: src.includes('#') ? safeDecode(src.split('#')[1]) : null, depth });
         walk(np, depth + 1);
       }
     })(navMap, 1);
@@ -320,7 +323,8 @@
       let el = null;
       if (e.frag) {
         const doc = book.docs[di].doc;
-        el = doc.getElementById(e.frag) || doc.querySelector('[name="' + CSS.escape(e.frag) + '"]');
+        el = doc.getElementById(e.frag);
+        if (!el) { try { el = doc.querySelector('[name="' + CSS.escape(e.frag) + '"]'); } catch (err) { el = null; } }
       }
       cuts.push({ title: e.title || 'Untitled', di, el, depth: e.depth, extra: P.looksLikeNonChapter(e.title) });
       if ((cuts.length & 255) === 0) yield 0.05 * cuts.length / book.toc.length;
@@ -435,7 +439,7 @@
     const name = file.name;
     const ext = (name.split('.').pop() || '').toLowerCase();
     let buffer;
-    try { buffer = await file.arrayBuffer(); } catch (e) { throw new Error('File read nahi ho payi (shayad bahut badi hai ya hata di gayi): ' + (e.message || e)); }
+    try { buffer = await file.arrayBuffer(); } catch (e) { throw new Error('Could not read the file (it may be too large or was removed): ' + (e.message || e)); }
     const baseTitle = name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim();
     if (ext === 'epub' || isZip(buffer)) {
       const book = await readEpub(buffer, onProgress, signal);
