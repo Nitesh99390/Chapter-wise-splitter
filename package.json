@@ -1,0 +1,15 @@
+{
+  "name": "chapter-wise-splitter",
+  "version": "1.0.0",
+  "description": "Split EPUB / TXT / HTML / Markdown novels into files of N chapters – fully in the browser.",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8080 --bind 0.0.0.0",
+    "fixtures": "node tests/make-fixtures.js",
+    "test": "python3 tests/e2e.py"
+  },
+  "devDependencies": {
+    "jszip": "3.10.1"
+  },
+  "license": "MIT"
+}

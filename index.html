@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chapter Splitter – Split EPUB / TXT novels chapter-wise</title>
+<meta name="description" content="Split any EPUB, TXT, HTML or Markdown novel into files of N chapters. Smart chapter detection, 100% in your browser." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
+<link rel="stylesheet" href="css/style.css" />
+<script>try{const t=localStorage.getItem('cs-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t;}catch(e){}</script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">📚</span>
+    <div>
+      <h1>Chapter Splitter</h1>
+      <p class="tag">EPUB · TXT · HTML · MD → chapter-wise files</p>
+    </div>
+  </div>
+  <div class="top-actions">
+    <span class="privacy" title="Files never leave your device">🔒 100% offline – files stay in your browser</span>
+    <button id="themeBtn" class="icon-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌓</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- STEP 1: upload -->
+  <section id="step-upload" class="card">
+    <div class="step-head"><span class="num">1</span><h2>Novel upload karein</h2></div>
+    <label id="dropzone" class="dropzone" tabindex="0">
+      <input id="fileInput" type="file" accept=".epub,.txt,.text,.md,.markdown,.html,.htm,.xhtml" hidden />
+      <div class="dz-icon">⬆️</div>
+      <div class="dz-title">File yahan drag &amp; drop karein ya <u>click karke choose karein</u></div>
+      <div class="dz-sub">Supported: <b>.epub</b>, <b>.txt</b>, <b>.html</b>, <b>.md</b> · English, हिंदी, 中文 &amp; more</div>
+    </label>
+    <div class="upload-row">
+      <label class="inline">Text encoding
+        <select id="encoding">
+          <option value="auto">Auto detect</option>
+          <option value="utf-8">UTF-8</option>
+          <option value="utf-16le">UTF-16 LE</option>
+          <option value="windows-1252">Windows-1252 (Western)</option>
+          <option value="iso-8859-1">ISO-8859-1</option>
+          <option value="gbk">GBK (Chinese)</option>
+          <option value="gb18030">GB18030</option>
+          <option value="big5">Big5</option>
+          <option value="shift_jis">Shift-JIS</option>
+          <option value="euc-kr">EUC-KR</option>
+          <option value="windows-1251">Windows-1251 (Cyrillic)</option>
+        </select>
+      </label>
+      <button id="sampleBtn" class="btn ghost small" type="button">✨ Sample novel se try karein</button>
+    </div>
+    <div id="fileInfo" class="file-info hidden"></div>
+  </section>
+
+  <!-- STEP 2: detection -->
+  <section id="step-detect" class="card hidden">
+    <div class="step-head">
+      <span class="num">2</span><h2>Chapter detection</h2>
+      <span id="detectBadge" class="badge"></span>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <div id="epubOpts" class="opt-group hidden">
+          <h3>EPUB mode</h3>
+          <div class="seg" id="epubMode">
+            <button data-v="auto" class="on">Auto</button>
+            <button data-v="toc">Table of contents</button>
+            <button data-v="text">Heading text</button>
+            <button data-v="spine">Per HTML file</button>
+          </div>
+          <div class="row">
+            <label class="inline">TOC depth
+              <select id="tocDepth"><option value="1">Level 1</option><option value="2">Level 1–2</option><option value="9" selected>All levels</option></select>
+            </label>
+            <label class="check"><input type="checkbox" id="skipExtras" checked /> Cover / copyright / contents skip karein</label>
+          </div>
+        </div>
+
+        <div class="opt-group" id="patternGroup">
+          <h3>Heading patterns <small>(kaunse headings ko chapter maane)</small></h3>
+          <div id="patternList" class="pattern-list"></div>
+          <label class="block">Custom regex <small>(optional – advanced)</small>
+            <input id="customRe" type="text" placeholder="e.g. ^Kaand\s+(\d+)  or  ^Session\s+\d+" spellcheck="false" />
+          </label>
+          <div id="customReErr" class="err hidden"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="opt-group">
+          <h3>Fine tuning</h3>
+          <label class="block">Minimum chapter length <output id="minCharsOut">200</output> chars
+            <input id="minChars" type="range" min="0" max="3000" step="50" value="200" />
+            <small class="hint">Isse chhote chapters (jaise contents list ki entries) agle chapter me merge ho jayenge.</small>
+          </label>
+          <label class="check"><input type="checkbox" id="mergeSubtitle" checked /> Heading ke neeche wali line ko title me jodein <small>("Chapter 1" + "The Beginning")</small></label>
+          <label class="check"><input type="checkbox" id="blankBefore" /> Heading se pehle khali line zaroori ho</label>
+        </div>
+        <div class="stats" id="stats"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 3: chapters -->
+  <section id="step-chapters" class="card hidden">
+    <div class="step-head">
+      <span class="num">3</span><h2>Chapters check karein</h2>
+      <span class="hint-inline">Title pe click karke rename karein · ⤒ se pichhle chapter me merge karein</span>
+    </div>
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="🔍 Chapter search…" />
+      <div class="toolbar-btns">
+        <button class="btn ghost small" id="selAll">Select all</button>
+        <button class="btn ghost small" id="selNone">Select none</button>
+        <button class="btn ghost small" id="selInvert">Invert</button>
+        <span class="sel-range">
+          <input id="rangeFrom" type="number" min="1" placeholder="From" />–<input id="rangeTo" type="number" min="1" placeholder="To" />
+          <button class="btn ghost small" id="selRange">Select range</button>
+        </span>
+        <button class="btn ghost small" id="resetEdits" title="Undo all renames / merges">↺ Reset edits</button>
+      </div>
+    </div>
+    <div id="frontRow" class="front-row hidden"></div>
+    <div class="chapter-table-wrap">
+      <table class="chapter-table">
+        <thead><tr><th class="c-chk"><input type="checkbox" id="chkAll" checked /></th><th class="c-no">#</th><th>Title</th><th class="c-words">Words</th><th class="c-act"></th></tr></thead>
+        <tbody id="chapterBody"></tbody>
+      </table>
+      <div id="emptyChapters" class="empty hidden">Koi chapter detect nahi hua 😕 — upar patterns badal kar dekhein (jaise “Bare numbers” ya custom regex).</div>
+    </div>
+    <div id="moreRow" class="more-row hidden"><button class="btn ghost small" id="showMore">Show more</button></div>
+  </section>
+
+  <!-- STEP 4: split & export -->
+  <section id="step-split" class="card hidden">
+    <div class="step-head"><span class="num">4</span><h2>Split &amp; download</h2></div>
+
+    <div class="grid2">
+      <div>
+        <div class="opt-group">
+          <h3>Ek file me kitne chapters?</h3>
+          <div class="seg" id="splitMode">
+            <button data-v="per" class="on">Chapters per file</button>
+            <button data-v="files">Total files</button>
+            <button data-v="ranges">Custom ranges</button>
+          </div>
+
+          <div class="mode-panel" data-mode="per">
+            <div class="big-number">
+              <button class="step-btn" data-step="-1" data-target="perFile">−</button>
+              <input id="perFile" type="number" min="1" value="10" />
+              <button class="step-btn" data-step="1" data-target="perFile">+</button>
+              <span>chapters / file</span>
+            </div>
+            <div class="presets" data-target="perFile">
+              <button>1</button><button>5</button><button>10</button><button>20</button><button>25</button><button>50</button><button>100</button>
+            </div>
+          </div>
+          <div class="mode-panel hidden" data-mode="files">
+            <div class="big-number">
+              <button class="step-btn" data-step="-1" data-target="fileCount">−</button>
+              <input id="fileCount" type="number" min="1" value="5" />
+              <button class="step-btn" data-step="1" data-target="fileCount">+</button>
+              <span>files (chapters barabar baante jayenge)</span>
+            </div>
+            <div class="presets" data-target="fileCount">
+              <button>2</button><button>3</button><button>4</button><button>5</button><button>10</button><button>20</button>
+            </div>
+          </div>
+          <div class="mode-panel hidden" data-mode="ranges">
+            <label class="block">Ranges (chapter numbers, comma se alag)
+              <input id="ranges" type="text" placeholder="1-10, 11-25, 26-50, 51-" spellcheck="false" />
+            </label>
+            <small class="hint"><code>51-</code> = 51 se last tak · <code>7</code> = sirf chapter 7 · Numbers selected chapters ki list ke hisaab se.</small>
+          </div>
+        </div>
+
+        <div class="opt-group">
+          <h3>Output format</h3>
+          <div class="format-cards" id="formatCards">
+            <button data-v="txt" class="on"><b>TXT</b><small>Plain text</small></button>
+            <button data-v="epub"><b>EPUB</b><small>E-reader / Kindle*</small></button>
+            <button data-v="html"><b>HTML</b><small>Browser me padhein</small></button>
+            <button data-v="md"><b>MD</b><small>Markdown</small></button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="opt-group">
+          <h3>File naming</h3>
+          <label class="block">Book title <input id="bookTitle" type="text" /></label>
+          <label class="block">Author <input id="bookAuthor" type="text" placeholder="(optional)" /></label>
+          <label class="block">File name template
+            <input id="template" type="text" value="{book} - Chapters {range}" spellcheck="false" />
+          </label>
+          <div class="tokens" id="tokens">
+            <button data-t="{book}">{book}</button><button data-t="{range}">{range}</button><button data-t="{start}">{start}</button><button data-t="{end}">{end}</button><button data-t="{part}">{part}</button><button data-t="{total}">{total}</button><button data-t="{first}">{first}</button><button data-t="{count}">{count}</button>
+          </div>
+          <label class="inline">Numbering
+            <select id="numbering">
+              <option value="original">Original chapter numbers</option>
+              <option value="sequential">Selected chapters 1, 2, 3…</option>
+            </select>
+          </label>
+        </div>
+        <div class="opt-group">
+          <h3>Content options</h3>
+          <label class="check"><input type="checkbox" id="optTitles" checked /> Har chapter ka title file me likhein</label>
+          <label class="check"><input type="checkbox" id="optFront" /> Front matter (intro / contents) pehli file me add karein</label>
+          <label class="check"><input type="checkbox" id="optHeader" /> File ke top par book name / author</label>
+          <label class="check"><input type="checkbox" id="optToc" checked /> HTML me table of contents</label>
+          <label class="check"><input type="checkbox" id="optCover" checked /> EPUB me original cover rakhein</label>
+          <label class="check"><input type="checkbox" id="optFolder" checked /> ZIP ke andar folder banayein</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="plan">
+      <div class="plan-head">
+        <h3>Output preview <span id="planSummary" class="badge"></span></h3>
+      </div>
+      <div id="planErr" class="err hidden"></div>
+      <ol id="planList" class="plan-list"></ol>
+    </div>
+
+    <div class="actions">
+      <button id="downloadZip" class="btn primary big">⬇️ Download all as ZIP</button>
+      <button id="downloadEach" class="btn ghost">Files alag-alag download karein</button>
+    </div>
+    <div id="progress" class="progress hidden"><div class="bar"><span></span></div><div class="ptext"></div></div>
+  </section>
+
+  <section class="card faq">
+    <details>
+      <summary>Kaise kaam karta hai? / Tips</summary>
+      <ul>
+        <li><b>EPUB:</b> pehle book ke Table of Contents se chapters liye jaate hain. Agar TOC galat ho to “Heading text” mode try karein.</li>
+        <li><b>TXT:</b> “Chapter 12”, “CHAPTER XII”, “Chapter Twelve”, “Ch. 5”, “अध्याय 5”, “第12章”, “Prologue/Epilogue” jaisi headings auto detect hoti hain.</li>
+        <li>Agar headings sirf numbers hain (“1.”, “002”) to <b>Bare numbers</b> pattern on karein.</li>
+        <li>Koi alag format ho (jaise “Kaand 3”) to <b>custom regex</b> dalein: <code>^Kaand\s+(\d+)</code></li>
+        <li>* Kindle ke liye EPUB ko “Send to Kindle” se bhejein.</li>
+        <li>Shortcuts: <kbd>Ctrl</kbd>+<kbd>Enter</kbd> = ZIP download.</li>
+      </ul>
+    </details>
+  </section>
+</main>
+
+<!-- preview modal -->
+<div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="modalTitle"></h3>
+      <div>
+        <button class="icon-btn" id="modalPrev" title="Previous chapter">◀</button>
+        <button class="icon-btn" id="modalNext" title="Next chapter">▶</button>
+        <button class="icon-btn" id="modalClose" title="Close">✕</button>
+      </div>
+    </div>
+    <div id="modalBody" class="modal-body"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<footer class="foot">Made with ❤️ · Chapter Splitter · Sab processing aapke browser me hoti hai, koi upload nahi.</footer>
+
+<script src="vendor/jszip.min.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/reader.js"></script>
+<script src="js/exporter.js"></script>
+<script src="js/sample.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

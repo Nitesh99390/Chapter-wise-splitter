@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8" /><title>Chapter Splitter – self test</title>
+<style>body{font:14px system-ui;margin:2em}li.ok{color:#15803d}li.fail{color:#b91c1c;font-weight:bold}</style>
+</head>
+<body>
+<h1>Chapter Splitter self test</h1>
+<p id="sum">Running…</p>
+<ol id="out"></ol>
+<script src="../vendor/jszip.min.js"></script>
+<script src="../js/parser.js"></script>
+<script src="../js/reader.js"></script>
+<script src="../js/exporter.js"></script>
+<script src="../js/sample.js"></script>
+<script>
+(async () => {
+  const P = CS.Parser, R = CS.Reader, X = CS.Exporter;
+  let pass = 0, fail = 0;
+  const out = document.getElementById('out');
+  function ok(cond, name, extra) {
+    const li = document.createElement('li');
+    li.className = cond ? 'ok' : 'fail';
+    li.textContent = (cond ? 'PASS ' : 'FAIL ') + name + (extra ? ' → ' + extra : '');
+    out.appendChild(li);
+    console.log(li.textContent);
+    cond ? pass++ : fail++;
+  }
+  async function load(name) {
+    const buf = await (await fetch('fixtures/' + name)).arrayBuffer();
+    return new File([buf], name);
+  }
+  try {
+    /* ---------- EPUB with nav TOC, anchors, extras ---------- */
+    const book = await R.readFile(await load('tricky.epub'), 'auto');
+    ok(book.kind === 'epub', 'tricky: read as epub');
+    ok(book.meta.title === 'Tricky Book' && book.meta.author === 'Test Author', 'tricky: metadata', book.meta.title + ' / ' + book.meta.author);
+    ok(book.toc.length === 8, 'tricky: nav toc entries (incl. nested)', book.toc.length);
+
+    const toc = R.epubChapters(book, { mode: 'toc', tocDepth: 9, skipExtras: true, text: { minChars: 200 } });
+    const titles = toc.chapters.map(c => c.title);
+    ok(toc.chapters.length === 4, 'tricky/toc: 4 chapters (extras + part heading dropped/merged)', JSON.stringify(titles));
+    ok(titles[0] === 'Chapter 1: Arrival' && titles[3] === 'Chapter 4: Night', 'tricky/toc: titles ordered');
+    const c1 = toc.chapters[0];
+    ok(/section 1\./.test(c1.text) && !/section 2\./.test(c1.text), 'tricky/toc: ch1 content cut at #c2 anchor');
+    ok(/section 2\./.test(toc.chapters[1].text) && !/section 3\./.test(toc.chapters[1].text), 'tricky/toc: ch2 content stops at next file');
+    ok(!/^Chapter 1/.test(c1.text.trim()), 'tricky/toc: duplicated heading stripped from body', c1.text.slice(0, 40));
+    ok(!toc.chapters.some(c => /author lives/.test(c.text)), 'tricky/toc: "About the Author" skipped');
+    ok(toc.front && /Copyright 2026/.test(toc.front.text), 'tricky/toc: cover/copyright moved to front matter');
+    ok(/&amp;|Smoke & Ash/.test(toc.chapters[2].title), 'tricky/toc: entity decoded in title', toc.chapters[2].title);
+
+    const auto = R.epubChapters(book, { mode: 'auto', tocDepth: 9, skipExtras: true, text: { minChars: 200 } });
+    ok(auto.mode === 'toc' && auto.chapters.length === 4, 'tricky/auto: prefers TOC', auto.mode + ' ' + auto.chapters.length);
+
+    const spine = R.epubChapters(book, { mode: 'spine', skipExtras: true, text: { minChars: 50 } });
+    ok(spine.chapters.length >= 3, 'tricky/spine: per-file chapters', spine.chapters.map(c => c.title).join(' | '));
+
+    const txt = R.epubChapters(book, { mode: 'text', text: { patterns: P.DEFAULT_PATTERNS, minChars: 200 } });
+    ok(txt.chapters.length === 4, 'tricky/text: heading detection finds 4', txt.chapters.map(c => c.title).join(' | '));
+
+    /* ---------- EPUB with useless NCX toc ---------- */
+    const bad = await R.readFile(await load('badtoc.epub'), 'auto');
+    ok(bad.toc.length === 1, 'badtoc: NCX parsed', bad.toc.length);
+    const badAuto = R.epubChapters(bad, { mode: 'auto', tocDepth: 9, skipExtras: true, text: { patterns: P.DEFAULT_PATTERNS, minChars: 200 } });
+    ok(badAuto.mode === 'text' && badAuto.chapters.length === 30, 'badtoc/auto: falls back to heading text, 30 chapters', badAuto.mode + ' ' + badAuto.chapters.length);
+
+    /* ---------- export EPUB from EPUB and re-read it (round trip) ---------- */
+    const chs = toc.chapters.map((c, i) => Object.assign({ index: i }, c));
+    const groups = P.makeGroups(chs.length, { mode: 'per', per: 2 }).groups;
+    const files = await X.buildFiles(JSZip, chs, groups, { format: 'epub', book: 'Tricky Book', author: 'Test Author', template: '{book} - Chapters {range}', includeTitles: true, numbering: 'original' });
+    ok(files.length === 2 && files[0].name === 'Tricky Book - Chapters 1-2.epub', 'export: 2 epub files', files.map(f => f.name).join(', '));
+    const again = await R.readFile(new File([files[1].data], files[1].name), 'auto');
+    const re = R.epubChapters(again, { mode: 'toc', skipExtras: true, tocDepth: 9, text: { minChars: 50 } });
+    ok(re.chapters.length === 2 && re.chapters[0].title === 'Chapter 3: Smoke & Ash', 'roundtrip: exported epub re-reads', re.chapters.map(c => c.title).join(' | '));
+    // every xhtml must be well-formed XML
+    const z = await JSZip.loadAsync(files[0].data);
+    let bad_xml = 0;
+    for (const name of Object.keys(z.files).filter(n => /\.(xhtml|opf|ncx)$/.test(n))) {
+      const d = new DOMParser().parseFromString(await z.file(name).async('string'), 'application/xml');
+      if (d.getElementsByTagName('parsererror').length) { bad_xml++; console.log('bad xml', name); }
+    }
+    ok(bad_xml === 0, 'export: all epub xml files well-formed');
+
+    /* ---------- TXT (sample) with Hindi + GBK decode ---------- */
+    const sample = await R.readFile(new File([CS.SAMPLE.text], CS.SAMPLE.name), 'auto');
+    const sr = P.detectTextChapters(sample.text, {});
+    ok(sr.chapters.length === 14, 'sample txt: 14 chapters (prologue + 12 + epilogue)', sr.chapters.length);
+    const gbk = await R.readFile(new File([new Uint8Array([0xB5, 0xDA, 0xD2, 0xBB, 0xD5, 0xC2, 0x0A, 0xC4, 0xE3, 0xBA, 0xC3])], 'x.txt'), 'gbk');
+    ok(gbk.text.startsWith('第一章'), 'decode: gbk', gbk.text);
+
+    /* ---------- grouping ---------- */
+    ok(JSON.stringify(P.makeGroups(7, { mode: 'files', files: 3 }).groups) === '[[0,2],[3,4],[5,6]]', 'groups: even distribution');
+    { const g = P.makeGroups(5, { mode: 'ranges', ranges: '9-12' }); ok(!!g.error && Array.isArray(g.groups) && g.groups.length === 0, 'groups: out-of-range error returns empty groups'); }
+  } catch (e) {
+    ok(false, 'exception', e && (e.stack || e.message || e));
+  }
+  document.getElementById('sum').textContent = (fail ? '❌ ' : '✅ ') + pass + ' passed, ' + fail + ' failed';
+  console.log('RESULT: ' + pass + ' passed, ' + fail + ' failed');
+})();
+</script>
+</body>
+</html>
