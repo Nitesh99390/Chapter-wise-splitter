@@ -114,9 +114,10 @@
   const byTag = (root, name) => Array.from(root.getElementsByTagNameNS('*', name));
   const firstTag = (root, name) => byTag(root, name)[0] || null;
 
-  async function readEpub(buffer, onProgress) {
+  async function readEpub(buffer, onProgress, signal) {
     if (typeof JSZip === 'undefined') throw new Error('JSZip failed to load');
-    const zip = await JSZip.loadAsync(buffer);
+    let zip;
+    try { zip = await JSZip.loadAsync(buffer); } catch (e) { throw new Error('EPUB khul nahi payi (file kharab ya adhuri hai): ' + (e.message || e)); }
     const fileMap = {};
     zip.forEach((path, f) => { fileMap[path.toLowerCase()] = f; });
     const getFile = p => zip.file(p) || fileMap[String(p).toLowerCase()] || null;
@@ -164,14 +165,24 @@
       .map(r => manifest[r.getAttribute('idref')])
       .filter(it => it && /x?html|xml/.test(it.type) && !/\bnav\b/.test(it.props));
 
-    // load all spine documents
+    // load all spine documents (yielding to the UI between files)
     const docs = [];
+    let last = P.now();
     for (let i = 0; i < spine.length; i++) {
-      const raw = await readStr(spine[i].href);
+      let raw;
+      try { raw = await readStr(spine[i].href); } catch (e) { console.warn('skip unreadable', spine[i].href, e); continue; }
       if (raw == null) continue;
-      const doc = parseXml(raw, /<!DOCTYPE html>\s*<html(?![^>]*xmlns)/i.test(raw) ? 'text/html' : 'application/xhtml+xml');
-      docs.push({ href: spine[i].href, doc, body: doc.body || firstTag(doc, 'body') || doc.documentElement });
-      if (onProgress) onProgress((i + 1) / spine.length);
+      let doc;
+      try { doc = parseXml(raw, /<!DOCTYPE html>\s*<html(?![^>]*xmlns)/i.test(raw.slice(0, 2000)) ? 'text/html' : 'application/xhtml+xml'); }
+      catch (e) { console.warn('skip unparsable', spine[i].href, e); continue; }
+      raw = null;
+      docs.push({ href: spine[i].href, doc, body: doc.body || firstTag(doc, 'body') || doc.documentElement, text: null });
+      if (P.now() - last > 30) {
+        if (onProgress) onProgress((i + 1) / spine.length);
+        await P.yieldToEventLoop();
+        if (signal && signal.aborted) { const e = new Error('Cancelled'); e.aborted = true; throw e; }
+        last = P.now();
+      }
     }
 
     // TOC
@@ -232,51 +243,72 @@
 
   /* ---- build chapter list from an EPUB ---- */
 
+  /** Plain text of one spine document (computed once, then cached). */
+  function docText(d) {
+    if (d.text == null) d.text = nodeToText(d.body);
+    return d.text;
+  }
+  /** Full plain text of an EPUB (cached). Generator so it can run in time slices. */
+  function* bookTextIter(book) {
+    if (book.fullText != null) return book.fullText;
+    const parts = [];
+    for (let i = 0; i < book.docs.length; i++) { parts.push(docText(book.docs[i])); yield i / book.docs.length; }
+    book.fullText = parts.join('\n\n');
+    return book.fullText;
+  }
+  function bookText(book) { return P.runSync(bookTextIter(book)); }
+
   /**
    * @param {object} book result of readEpub
    * @param {{mode:'auto'|'toc'|'spine'|'text', tocDepth:number, skipExtras:boolean, text:object}} opts
    */
   function epubChapters(book, opts) {
+    return P.runSync(epubChaptersIter(book, opts));
+  }
+
+  function* epubChaptersIter(book, opts) {
     opts = Object.assign({ mode: 'auto', tocDepth: 9, skipExtras: true }, opts || {});
     let mode = opts.mode, result;
     if (mode === 'auto') {
-      const textRes = epubByText(book, opts);
-      const tocRes = book.toc.length >= 2 ? epubByToc(book, opts) : null;
+      const textRes = yield* P.sub(epubByText(book, opts), 0, 0.4);
+      const tocRes = book.toc.length >= 2 ? yield* P.sub(epubByToc(book, opts), 0.4, 1) : null;
       // Prefer the TOC unless text detection finds clearly more chapters (bad TOCs that list one entry per file
       // while each file holds many chapters, or a TOC with only a few entries)
       if (tocRes && tocRes.chapters.length >= 2 && textRes.chapters.length <= tocRes.chapters.length * 1.5) { result = tocRes; mode = 'toc'; }
       else if (textRes.chapters.length >= 2) { result = textRes; mode = 'text'; }
       else if (tocRes && tocRes.chapters.length) { result = tocRes; mode = 'toc'; }
-      else { result = epubBySpine(book, opts); mode = 'spine'; }
-    } else if (mode === 'toc') result = epubByToc(book, opts);
-    else if (mode === 'spine') result = epubBySpine(book, opts);
-    else result = epubByText(book, opts);
+      else { result = yield* epubBySpine(book, opts); mode = 'spine'; }
+    } else if (mode === 'toc') result = yield* epubByToc(book, opts);
+    else if (mode === 'spine') result = yield* epubBySpine(book, opts);
+    else result = yield* epubByText(book, opts);
     result.mode = mode;
     return result;
   }
 
-  function epubBySpine(book, opts) {
+  function* epubBySpine(book, opts) {
     const chapters = [];
-    let front = null;
-    book.docs.forEach((d, i) => {
-      const text = nodeToText(d.body);
-      if (!text.replace(/\s/g, '')) return;
+    const front = null;
+    for (let i = 0; i < book.docs.length; i++) {
+      const d = book.docs[i];
+      const text = docText(d);
+      yield i / book.docs.length;
+      if (!P.countNonWs(text, 1)) continue;
       const h = d.body.querySelector && d.body.querySelector('h1,h2,h3');
       const docTitle = textOf(firstTag(d.doc, 'title'));
       const title = (h && textOf(h)) || (docTitle && docTitle !== book.meta.title ? docTitle : '') || ('Section ' + (i + 1));
       chapters.push(stripLeadingTitle({ title, num: P.extractNumber(title), text, html: nodeToCleanHtml(d.body) }));
-    });
+    }
     let list = chapters;
     if (opts.skipExtras) list = chapters.filter(c => !P.looksLikeNonChapter(c.title));
     return P.mergeShortChapters(list, front, opts.text ? opts.text.minChars : 200);
   }
 
-  function epubByText(book, opts) {
-    const full = book.docs.map(d => nodeToText(d.body)).join('\n\n');
-    return P.detectTextChapters(full, opts.text || {});
+  function* epubByText(book, opts) {
+    const full = yield* P.sub(bookTextIter(book), 0, 0.3);
+    return yield* P.sub(P.detectTextChaptersIter(full, opts.text || {}), 0.3, 1);
   }
 
-  function epubByToc(book, opts) {
+  function* epubByToc(book, opts) {
     const docIndex = {};
     book.docs.forEach((d, i) => { docIndex[d.href] = i; docIndex[d.href.toLowerCase()] = i; });
     // resolve TOC entries to positions
@@ -291,6 +323,7 @@
         el = doc.getElementById(e.frag) || doc.querySelector('[name="' + CSS.escape(e.frag) + '"]');
       }
       cuts.push({ title: e.title || 'Untitled', di, el, depth: e.depth, extra: P.looksLikeNonChapter(e.title) });
+      if ((cuts.length & 255) === 0) yield 0.05 * cuts.length / book.toc.length;
     }
     // order by document position
     cuts.forEach((c, i) => { c.order = i; });
@@ -305,12 +338,15 @@
     }
     cuts = dedup;
     if (!cuts.length) return { front: null, chapters: [] };
+    yield 0.1;
 
-    const pieces = cuts.map((c, k) => {
-      const next = cuts[k + 1];
-      const frag = extractBetween(book.docs, c, next);
-      return { title: c.title, num: P.extractNumber(c.title), extra: c.extra, text: nodeToText(frag), html: nodeToCleanHtml(frag) };
-    });
+    const pieces = new Array(cuts.length);
+    for (let k = 0; k < cuts.length; k++) {
+      const c = cuts[k];
+      const frag = extractBetween(book.docs, c, cuts[k + 1]);
+      pieces[k] = { title: c.title, num: P.extractNumber(c.title), extra: c.extra, text: nodeToText(frag), html: nodeToCleanHtml(frag) };
+      yield 0.1 + 0.85 * (k + 1) / cuts.length;
+    }
     // front matter = everything before the first cut
     const before = extractBetween(book.docs, { di: 0, el: null, start: true }, cuts[0]);
     const frontText = nodeToText(before);
@@ -330,7 +366,7 @@
       }
       chapters = chapters.filter(c => !c.extra);
     }
-    chapters = chapters.filter(c => c.text.replace(/\s/g, '') || c.title);
+    chapters = chapters.filter(c => P.countNonWs(c.text, 1) || c.title);
     return P.mergeShortChapters(chapters, front, opts.text ? Math.min(opts.text.minChars, 50) : 50);
   }
 
@@ -395,26 +431,38 @@
   /* ------------------------------------------------------------------ *
    * Generic entry point
    * ------------------------------------------------------------------ */
-  async function readFile(file, encoding, onProgress) {
+  async function readFile(file, encoding, onProgress, signal) {
     const name = file.name;
     const ext = (name.split('.').pop() || '').toLowerCase();
-    const buffer = await file.arrayBuffer();
+    let buffer;
+    try { buffer = await file.arrayBuffer(); } catch (e) { throw new Error('File read nahi ho payi (shayad bahut badi hai ya hata di gayi): ' + (e.message || e)); }
     const baseTitle = name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim();
     if (ext === 'epub' || isZip(buffer)) {
-      const book = await readEpub(buffer, onProgress);
+      const book = await readEpub(buffer, onProgress, signal);
+      buffer = null;
       if (!book.meta.title) book.meta.title = baseTitle;
       book.fileName = name;
       return book;
     }
-    const { text, encoding: enc } = decodeText(buffer, encoding);
+    if (onProgress) onProgress(0.3);
+    await P.yieldToEventLoop();
+    let { text, encoding: enc } = decodeText(buffer, encoding);
+    buffer = null;
+    if (onProgress) onProgress(0.7);
+    await P.yieldToEventLoop();
     if (ext === 'html' || ext === 'htm' || ext === 'xhtml' || /^\s*<(!doctype|html)/i.test(text.slice(0, 200))) {
-      const doc = new DOMParser().parseFromString(text, 'text/html');
-      return { kind: 'text', fileName: name, encoding: enc, meta: { title: textOf(doc.querySelector('title')) || baseTitle, author: '', language: doc.documentElement.lang || 'en' }, text: nodeToText(doc.body) };
+      let doc = new DOMParser().parseFromString(text, 'text/html');
+      text = null;
+      await P.yieldToEventLoop();
+      const meta = { title: textOf(doc.querySelector('title')) || baseTitle, author: '', language: doc.documentElement.lang || 'en' };
+      const plain = nodeToText(doc.body);
+      doc = null;
+      return { kind: 'text', fileName: name, encoding: enc, meta, text: plain };
     }
     return { kind: 'text', fileName: name, encoding: enc, isMarkdown: ext === 'md' || ext === 'markdown', meta: { title: baseTitle, author: '', language: guessLang(text) }, text };
   }
 
-  function isZip(buf) { const b = new Uint8Array(buf, 0, 4); return b[0] === 0x50 && b[1] === 0x4B && b[2] === 3 && b[3] === 4; }
+  function isZip(buf) { if (buf.byteLength < 4) return false; const b = new Uint8Array(buf, 0, 4); return b[0] === 0x50 && b[1] === 0x4B && b[2] === 3 && b[3] === 4; }
 
   function guessLang(text) {
     const s = text.slice(0, 5000);
@@ -424,5 +472,5 @@
     return 'en';
   }
 
-  CS.Reader = { readFile, readEpub, epubChapters, decodeText, nodeToText, nodeToCleanHtml, resolvePath };
+  CS.Reader = { readFile, readEpub, epubChapters, epubChaptersIter, bookText, bookTextIter, decodeText, nodeToText, nodeToCleanHtml, resolvePath };
 })(self.CS = self.CS || {});

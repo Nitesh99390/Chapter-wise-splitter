@@ -153,8 +153,10 @@
   async function buildFiles(JSZip, chapters, groups, o, onProgress) {
     const files = [];
     const fmt = EXT[o.format] ? o.format : 'txt';
-    const totalChapters = chapters.length ? Math.max(...chapters.map(c => c.index + 1)) : 0;
+    let totalChapters = 0;
+    for (const c of chapters) if (c.index + 1 > totalChapters) totalChapters = c.index + 1; // no spread: safe for huge lists
     const used = new Set();
+    let last = P.now ? P.now() : Date.now();
     for (let g = 0; g < groups.length; g++) {
       if (o.onlyGroup != null && g !== o.onlyGroup) continue; // single-file download keeps real part numbers
       const [a, b] = groups[g];
@@ -183,7 +185,9 @@
       else data = await renderEpub(JSZip, list, opts, title);
       files.push({ name, data, mime: MIME[fmt], start, end, count: realList.length, title: rangeLabel });
       if (onProgress) onProgress((g + 1) / groups.length);
-      if (g % 20 === 19) await new Promise(r => setTimeout(r, 0)); // keep UI responsive
+      // keep the UI responsive: yield whenever we've worked ~30 ms
+      const t = P.now ? P.now() : Date.now();
+      if (t - last > 30) { await (P.yieldToEventLoop ? P.yieldToEventLoop() : new Promise(r => setTimeout(r, 0))); last = P.now ? P.now() : Date.now(); }
     }
     return files;
   }
