@@ -34,6 +34,24 @@ with sync_playwright() as p:
     check(rows == 14, "sample: 14 chapter rows", rows)
     check("14 chapters" in page.inner_text("#detectBadge"), "badge shows count", page.inner_text("#detectBadge"))
 
+    # Easy mode (default): technical options hidden, friendly hint card shown
+    check(not page.is_visible("#customRe") and not page.is_visible("#template") and not page.is_visible("#encoding"), "easy mode hides technical options")
+    check(page.is_visible("#detectHints .hint-card.ok") and "mil gaye" in page.inner_text("#detectHints"), "friendly success hint shown", page.inner_text("#detectHints")[:80])
+    check(page.is_visible("#howto"), "how-it-works strip visible")
+    page.screenshot(path="/tmp/cs-easy.png", full_page=True)
+
+    # no-chapter hint with one-click fix (bare numbered headings)
+    page.evaluate("CS.App.loadFile(new File([Array.from({length:8},(_,i)=>(i+1)+'.\\n'+'lorem ipsum dolor sit amet. '.repeat(40)).join('\\n\\n')],'nums.txt',{type:'text/plain'}))")
+    page.wait_for_selector("#detectHints .hint-card.warn")
+    check(page.is_visible("#detectHints button[data-fix=numbered]"), "no-chapter hint suggests 'numbers' fix")
+    page.click("#detectHints button[data-fix=numbered]")
+    page.wait_for_function("document.querySelector('#detectBadge').textContent.includes('8 chapters')")
+    check(True, "one-click fix detects 8 numbered chapters")
+    page.evaluate("localStorage.clear()")
+    page.reload()
+    page.click("#sampleBtn")
+    page.wait_for_selector("#chapterBody tr")
+
     # per file = 5 -> 3 files
     page.fill("#perFile", "5")
     page.dispatch_event("#perFile", "input")
@@ -61,7 +79,10 @@ with sync_playwright() as p:
     epubs = [n for n in z.namelist() if not n.endswith("/")]
     check(len(epubs) == 2 and all(n.endswith(".epub") for n in epubs), "zip: 2 epub files", epubs)
 
-    # custom ranges
+    # custom ranges (advanced-only)
+    check(not page.is_visible("#splitMode button[data-v=ranges]"), "ranges hidden in easy mode")
+    page.click("#uiMode button[data-v=advanced]")
+    check(page.is_visible("#template") and page.is_visible("#encoding") and page.is_visible("#detectDetails summary"), "advanced mode shows all options")
     page.click("#splitMode button[data-v=ranges]")
     page.fill("#ranges", "1-3, 4-10, 11-"); page.dispatch_event("#ranges", "input")
     check(page.locator("#planList li").count() == 3, "ranges: 3 files")

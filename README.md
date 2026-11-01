@@ -3,6 +3,15 @@
 Kisi bhi **EPUB / TXT / HTML / Markdown** novel ko **chapter-wise** files me split karein.
 Aap choose karte hain ki **ek file me kitne chapters** hon. Sab kuch **aapke browser me** hota hai, koi file upload nahi hoti.
 
+## 🟢 Easy mode (default)
+
+Bina kisi technical setting ke 3 step me kaam:
+1. **File chunein** → 2. **Chapters check karein** → 3. **Download**
+
+- Chapter detect hone ke baad ek friendly card batata hai ki sab theek hai ya nahi.
+- Agar chapters na milein / galat milein to **one-click "Try karein" buttons** milte hain (regex ya settings chhedne ki zaroorat nahi).
+- Encoding, regex, file-name template, TOC depth jaise options sirf **Advanced** mode (top-right toggle) me dikhte hain.
+
 ## ✨ Features
 
 **Input:** `.epub` (EPUB 2 + 3), `.txt`, `.html`, `.md`
