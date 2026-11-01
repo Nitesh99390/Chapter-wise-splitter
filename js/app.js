@@ -107,8 +107,10 @@
       }
       const el = document.querySelector('[data-cnt="' + k + '"]');
       if (el) el.textContent = n ? n + ' found' : '';
+      patternCounts[k] = n;
     });
   }
+  const patternCounts = {};
 
   function textOptions() {
     const custom = $('#customRe').value;
@@ -144,11 +146,11 @@
       if (book.kind === 'text' && book.isMarkdown && !selectedPatterns().includes('markdown')) {
         const md = $('#patternList input[value="markdown"]'); if (md) md.checked = true;
       }
-      ['#step-detect', '#step-chapters', '#step-split'].forEach(s => $(s).classList.remove('hidden'));
+      ['#step-chapters', '#step-split'].forEach(s => $(s).classList.remove('hidden'));
       if (book.kind === 'text') updatePatternCounts(book.text);
       else updatePatternCounts(book.docs.map(d => R.nodeToText(d.body)).join('\n\n'));
       detect();
-      $('#step-detect').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $('#step-chapters').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e) {
       console.error(e);
       info.innerHTML = '<div class="fi-main"><b>❌ ' + P.escapeHtml(file.name) + '</b><span class="meta err">' + P.escapeHtml(e.message || String(e)) + '</span></div>';
@@ -208,14 +210,81 @@
     }
     // pattern group is irrelevant for TOC / spine mode
     $('#patternGroup').style.opacity = (state.book.kind === 'epub' && res.mode !== 'text') ? .55 : 1;
-    const modeLabel = { toc: 'Table of contents', text: 'Heading text', spine: 'Per HTML file' }[res.mode] || res.mode;
-    $('#detectBadge').textContent = (state.chapters.length === 1 && state.chapters[0].whole ? '0 chapters' : fmtNum(state.chapters.length) + ' chapters') +
-      (state.book.kind === 'epub' ? ' · via ' + modeLabel : '') + ' · ' + Math.round(performance.now() - t0) + ' ms';
+    const modeLabel = { toc: 'book ki index (TOC)', text: 'heading text', spine: 'HTML files' }[res.mode] || res.mode;
+    const none = state.chapters.length === 1 && state.chapters[0].whole;
+    $('#detectBadge').textContent = (none ? '0 chapters' : fmtNum(state.chapters.length) + ' chapters') +
+      (state.book.kind === 'epub' ? ' · via ' + modeLabel : '');
+    $('#detectBadge').title = Math.round(performance.now() - t0) + ' ms';
     state.shown = PAGE;
     renderStats();
     renderChapters();
     renderPlan();
+    renderHints();
     saveSettings();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Friendly result card + one-click fixes (so users never need regex)
+   * ------------------------------------------------------------------ */
+  const setEpubMode = v => setSeg('#epubMode', v, m => { state.epubMode = m; detect(); });
+  const FIXES = {
+    numbered: { label: '🔢 Numbers wale headings (1. / 002)', run: () => setPattern('numbered', true) },
+    markdown: { label: '# Markdown headings', run: () => setPattern('markdown', true) },
+    part: { label: 'Part / Volume headings', run: () => setPattern('part', true) },
+    spine: { label: '📄 Har HTML file = 1 chapter', run: () => setEpubMode('spine') },
+    toc: { label: '📑 Book ki index (TOC) se lein', run: () => setEpubMode('toc') },
+    text: { label: '🔤 Heading text se dhoondhein', run: () => setEpubMode('text') },
+    mergeShort: { label: '🧹 Chhote chapters auto-merge karein', run: () => { const r = $('#minChars'); r.value = Math.min(3000, (parseInt(r.value, 10) || 0) + 600); $('#minCharsOut').textContent = r.value; detect(); } },
+    blank: { label: 'Sirf khali line ke baad wali headings', run: () => { $('#blankBefore').checked = true; detect(); } },
+    advanced: { label: '⚙️ Saari settings dikhayein', run: () => { setUiMode('advanced'); const d = $('#detectDetails'); d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
+    goSplit: { label: '✅ Sab sahi hai → Download pe chalein', primary: true, run: () => $('#step-split').scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+  };
+  function setPattern(k, on) {
+    const el = $('#patternList input[value="' + k + '"]');
+    if (el) { el.checked = on; detect(); }
+  }
+  function renderHints() {
+    const box = $('#detectHints');
+    if (!state.book) { box.innerHTML = ''; return; }
+    const ch = state.chapters;
+    const none = !ch.length || (ch.length === 1 && ch[0].whole);
+    const isEpub = state.book.kind === 'epub';
+    const textMode = !isEpub || state.result.mode === 'text';
+    const sel = selectedPatterns();
+    const cards = [];
+    const add = (cls, icon, title, sub, fixes) => cards.push({ cls, icon, title, sub, fixes: fixes.filter(Boolean) });
+
+    if (none) {
+      const f = [];
+      if (textMode) ['numbered', 'markdown', 'part'].forEach(k => { if (!sel.includes(k) && (patternCounts[k] || 0) >= 2) f.push(k); });
+      if (isEpub) { if (state.epubMode !== 'spine') f.push('spine'); if (state.epubMode !== 'text') f.push('text'); }
+      f.push('advanced');
+      add('warn', '😕', 'Koi chapter nahi mila.', 'Ghabrayein nahi — neeche ek button dabakar dobara try karein. Kuch nahi hua to poori book ek hi file me download ho jayegi.', f);
+    } else {
+      const avg = ch.reduce((a, c) => a + c.words, 0) / ch.length;
+      const shortN = ch.filter(c => c.words < avg * 0.15).length;
+      const tiny = ch.length >= 3 && shortN / ch.length > 0.2;
+      const few = ch.length <= 2 && textMode && ['numbered', 'markdown'].some(k => !sel.includes(k) && (patternCounts[k] || 0) >= 5);
+      if (tiny) {
+        add('warn', '🤔', fmtNum(ch.length) + ' chapters mile, par ' + shortN + ' bahut chhote hain.', 'Shayad contents list ya galat headings chapter ban gaye. Ye try karein:', [
+          'mergeShort', isEpub && state.epubMode !== 'toc' && state.book.toc.length ? 'toc' : null, isEpub && state.epubMode !== 'text' ? 'text' : null, textMode && !$('#blankBefore').checked ? 'blank' : null, 'advanced']);
+      } else if (few) {
+        add('warn', '🤔', 'Sirf ' + ch.length + ' chapter' + (ch.length > 1 ? 's' : '') + ' mila.', 'Lagta hai is file me headings alag style ki hain. Ye try karein:', ['numbered', 'markdown', 'advanced']);
+      } else {
+        add('ok', '🎉', fmtNum(ch.length) + ' chapters mil gaye!', 'Neeche list ek baar dekh lein. Jo chapter nahi chahiye uska ✓ hata dein. Sab theek lage to seedha download pe chalein.', ['goSplit', 'advanced']);
+      }
+    }
+    box.innerHTML = cards.map(c => '<div class="hint-card ' + c.cls + '"><span class="hi">' + c.icon + '</span><div class="ht"><b>' + P.escapeHtml(c.title) + '</b><small>' + P.escapeHtml(c.sub) + '</small></div>' +
+      '<div class="fixes">' + c.fixes.map(k => '<button class="btn small ' + (FIXES[k].primary ? 'primary' : 'ghost') + '" data-fix="' + k + '">' + FIXES[k].label + '</button>').join('') + '</div></div>').join('');
+  }
+
+  /* Easy / Advanced UI mode */
+  function setUiMode(v) {
+    document.documentElement.classList.toggle('adv-on', v === 'advanced');
+    $$('#uiMode button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    try { localStorage.setItem('cs-ui', v); } catch (e) { /* ignore */ }
+    // "custom ranges" is advanced-only; fall back to a simple mode when hidden
+    if (v !== 'advanced' && state.splitMode === 'ranges') setSeg('#splitMode', 'per', m => { state.splitMode = m; showModePanel(m); renderPlan(); });
   }
 
   function renderStats() {
@@ -392,7 +461,9 @@
     });
     if (groups.length > PLAN_PREVIEW) items.push('<li><span class="pc">… aur ' + fmtNum(groups.length - PLAN_PREVIEW) + ' files</span></li>');
     list.innerHTML = items.join('');
-    $('#planSummary').textContent = fmtNum(selected.length) + ' chapters → ' + fmtNum(groups.length) + ' file' + (groups.length === 1 ? '' : 's');
+    const per = groups.length ? Math.round(selected.length / groups.length) : 0;
+    $('#planSummary').textContent = fmtNum(selected.length) + ' chapters → ' + fmtNum(groups.length) + ' file' + (groups.length === 1 ? '' : 's') +
+      (groups.length > 1 && state.splitMode !== 'per' ? ' (har file me ~' + per + ')' : '');
     const disabled = !groups.length || !!error;
     $('#downloadZip').disabled = disabled;
     $('#downloadEach').disabled = disabled;
@@ -565,6 +636,13 @@
       renderPlan(); saveSettings();
     });
     $('#planList').addEventListener('click', e => { const b = e.target.closest('button[data-g]'); if (b) downloadOne(+b.dataset.g); });
+    $('#togglePlan').onclick = () => {
+      const l = $('#planList'); l.classList.toggle('hidden');
+      $('#togglePlan').textContent = l.classList.contains('hidden') ? 'List dikhayein' : 'List chhupayein';
+    };
+    $('#detectHints').addEventListener('click', e => { const b = e.target.closest('button[data-fix]'); if (b && FIXES[b.dataset.fix]) FIXES[b.dataset.fix].run(); });
+    bindSeg('#uiMode', setUiMode);
+    setUiMode(document.documentElement.classList.contains('adv-on') ? 'advanced' : 'simple');
     $('#downloadZip').onclick = downloadZip;
     $('#downloadEach').onclick = downloadEach;
     showModePanel(state.splitMode);
