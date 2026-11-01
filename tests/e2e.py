@@ -36,7 +36,7 @@ with sync_playwright() as p:
 
     # Easy mode (default): technical options hidden, friendly hint card shown
     check(not page.is_visible("#customRe") and not page.is_visible("#template") and not page.is_visible("#encoding"), "easy mode hides technical options")
-    check(page.is_visible("#detectHints .hint-card.ok") and "mil gaye" in page.inner_text("#detectHints"), "friendly success hint shown", page.inner_text("#detectHints")[:80])
+    check(page.is_visible("#detectHints .hint-card.ok") and "chapters found" in page.inner_text("#detectHints"), "friendly success hint shown", page.inner_text("#detectHints")[:80])
     check(page.is_visible("#howto"), "how-it-works strip visible")
     page.screenshot(path="/tmp/cs-easy.png", full_page=True)
 
@@ -96,6 +96,21 @@ with sync_playwright() as p:
     page.locator("#chapterBody tr").nth(2).locator("button[data-act=merge]").click()
     check(page.locator("#chapterBody tr").count() == 13, "merge reduces rows")
 
+    # search + "Select none" only affects matching chapters
+    page.click("#selAll")
+    page.fill("#search", "Frozen")
+    page.click("#selNone")
+    page.fill("#search", "")
+    off = page.evaluate("CS.App.state.chapters.filter(c => !c.selected).length")
+    check(off == 1, "search: bulk select only touches matching rows", off)
+    page.click("#selAll")
+
+    # nothing selected -> download disabled (and stays disabled)
+    page.click("#selNone")
+    check(page.is_disabled("#downloadZip") and page.is_disabled("#downloadEach"), "no selection: downloads disabled")
+    page.click("#selAll")
+    check(not page.is_disabled("#downloadZip"), "selection restored: download enabled")
+
     # preview modal
     page.locator("#chapterBody tr").nth(1).locator("button[data-act=preview]").click()
     check(page.is_visible("#modal") and "Frozen Clock" in page.inner_text("#modalTitle"), "preview modal opens", page.inner_text("#modalTitle"))
@@ -110,6 +125,17 @@ with sync_playwright() as p:
     page.wait_for_function("document.querySelector('#detectBadge').textContent.includes('30 chapters')", timeout=15000)
     check(True, "bad-toc epub: 30 chapters via heading text")
     page.screenshot(path="/tmp/cs-epub.png", full_page=False)
+
+    # unsupported file type -> clear English message, no crash
+    page.evaluate("CS.App.loadFile(new File(['%PDF-1.4'], 'book.pdf'))")
+    check("not supported" in page.inner_text("#fileInfo"), "unsupported file type message", page.inner_text("#fileInfo")[:80])
+
+    # whole UI is English (no leftover Hinglish)
+    import re
+    page.click("#uiMode button[data-v=advanced]")
+    body = page.evaluate("document.body.innerText + ' ' + Array.from(document.querySelectorAll('[title],[placeholder],[data-tip]')).map(e => (e.title||'') + ' ' + (e.placeholder||'') + ' ' + (e.dataset.tip||'')).join(' ')")
+    hing = re.findall(r"\b(karein|nahi|hain|chahiye|dikhayein|chunein|mein|wale|kitne|madad|kijiye|aapki|sirf|dobara)\b", body, re.I)
+    check(not hing, "UI text is English", hing[:5])
 
     # dark mode screenshot
     page.click("#themeBtn")

@@ -87,6 +87,14 @@
       .replace(/&nbsp;/g, '&#160;');
   }
 
+  /** Safe file extension for the cover image (some EPUBs name it just "cover" with no extension). */
+  function coverExt(cover) {
+    const fromName = String(cover.name || '').split('.').pop().toLowerCase();
+    if (/^(jpe?g|png|gif|webp|svg)$/.test(fromName) && String(cover.name).includes('.')) return fromName;
+    const fromType = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp', 'image/svg+xml': 'svg' }[String(cover.type || '').toLowerCase()];
+    return fromType || 'jpg';
+  }
+
   function uuid() {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
@@ -105,7 +113,7 @@
     const spine = [];
     let coverMeta = '';
     if (o.cover && o.includeCover) {
-      const ext = (o.cover.name.split('.').pop() || 'jpg').toLowerCase();
+      const ext = coverExt(o.cover);
       oe.file('cover.' + ext, o.cover.data);
       manifest.push('<item id="cover-img" href="cover.' + ext + '" media-type="' + o.cover.type + '" properties="cover-image"/>');
       manifest.push('<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>');
@@ -150,31 +158,49 @@
    * @param {object} o options {format, template, book, author, language, includeTitles, includeToc, includeBookHeader, cover, includeCover, numbering:'original'|'sequential', front, includeFront}
    * @returns {Promise<Array<{name, data, mime, start, end, count}>>}
    */
+  /**
+   * Names + numbering for every output file. Shared by the UI preview and buildFiles(), so the
+   * names shown in the plan are exactly the names that end up in the ZIP (incl. de-duplication).
+   * o.totalChapters (optional) = size of the full chapter list, used for zero padding.
+   */
+  function planFiles(chapters, groups, o) {
+    const fmt = EXT[o.format] ? o.format : 'txt';
+    let totalChapters = o.totalChapters || 0;
+    if (!totalChapters) for (const c of chapters) if (c.index + 1 > totalChapters) totalChapters = c.index + 1; // no spread: safe for huge lists
+    const used = new Set();
+    const out = [];
+    for (let g = 0; g < groups.length; g++) {
+      const [a, b] = groups[g];
+      const first = chapters[a], last = chapters[Math.min(b, chapters.length - 1)];
+      if (!first || !last) continue;
+      const start = o.numbering === 'sequential' ? a + 1 : first.index + 1;
+      const end = o.numbering === 'sequential' ? b + 1 : last.index + 1;
+      const ctx = {
+        book: P.sanitizeFilename(o.book || 'Book'), start, end, part: g + 1, totalParts: groups.length,
+        totalChapters: o.numbering === 'sequential' ? chapters.length : totalChapters, count: b - a + 1,
+        firstTitle: P.sanitizeFilename(first.title).slice(0, 60), lastTitle: P.sanitizeFilename(last.title).slice(0, 60)
+      };
+      const base = buildName(o.template, ctx);
+      let name = base + '.' + EXT[fmt], k = 2;
+      while (used.has(name.toLowerCase())) name = base + ' (' + (k++) + ').' + EXT[fmt];
+      used.add(name.toLowerCase());
+      out.push({ g, a, b, start, end, name, count: b - a + 1 });
+    }
+    return out;
+  }
+
   async function buildFiles(JSZip, chapters, groups, o, onProgress) {
     const files = [];
     const fmt = EXT[o.format] ? o.format : 'txt';
-    let totalChapters = 0;
-    for (const c of chapters) if (c.index + 1 > totalChapters) totalChapters = c.index + 1; // no spread: safe for huge lists
-    const used = new Set();
+    const plan = planFiles(chapters, groups, o);
     let last = P.now ? P.now() : Date.now();
-    for (let g = 0; g < groups.length; g++) {
+    for (let pi = 0; pi < plan.length; pi++) {
+      const { g, a, b, start, end, name } = plan[pi];
       if (o.onlyGroup != null && g !== o.onlyGroup) continue; // single-file download keeps real part numbers
-      const [a, b] = groups[g];
       let list = chapters.slice(a, b + 1);
       if (!list.length) continue;
       if (g === 0 && o.includeFront && o.front && o.front.text) list = [Object.assign({ index: -1 }, o.front)].concat(list);
       const realList = list.filter(c => c.index >= 0);
-      const start = o.numbering === 'sequential' ? a + 1 : realList[0].index + 1;
-      const end = o.numbering === 'sequential' ? b + 1 : realList[realList.length - 1].index + 1;
-      const ctx = {
-        book: P.sanitizeFilename(o.book || 'Book'), start, end, part: g + 1, totalParts: groups.length,
-        totalChapters: o.numbering === 'sequential' ? chapters.length : totalChapters, count: realList.length,
-        firstTitle: P.sanitizeFilename(realList[0].title).slice(0, 60), lastTitle: P.sanitizeFilename(realList[realList.length - 1].title).slice(0, 60)
-      };
-      let base = buildName(o.template, ctx);
-      let name = base + '.' + EXT[fmt], k = 2;
-      while (used.has(name.toLowerCase())) name = base + ' (' + (k++) + ').' + EXT[fmt];
-      used.add(name.toLowerCase());
       const rangeLabel = start === end ? 'Chapter ' + start : 'Chapters ' + start + '–' + end;
       const title = (o.book || 'Book') + ' – ' + rangeLabel;
       const opts = Object.assign({}, o, { rangeLabel });
@@ -184,7 +210,7 @@
       else if (fmt === 'html') data = renderHtml(list, opts, title);
       else data = await renderEpub(JSZip, list, opts, title);
       files.push({ name, data, mime: MIME[fmt], start, end, count: realList.length, title: rangeLabel });
-      if (onProgress) onProgress((g + 1) / groups.length);
+      if (onProgress) onProgress((pi + 1) / plan.length);
       // keep the UI responsive: yield whenever we've worked ~30 ms
       const t = P.now ? P.now() : Date.now();
       if (t - last > 30) { await (P.yieldToEventLoop ? P.yieldToEventLoop() : new Promise(r => setTimeout(r, 0))); last = P.now ? P.now() : Date.now(); }
@@ -200,5 +226,5 @@
       m => onProgress && onProgress(m.percent / 100));
   }
 
-  return { buildName, buildFiles, zipFiles, renderTxt, renderMd, renderHtml, renderEpub, toXhtml, chapterHtml, MIME };
+  return { buildName, planFiles, buildFiles, zipFiles, renderTxt, renderMd, renderHtml, renderEpub, toXhtml, chapterHtml, MIME };
 });
