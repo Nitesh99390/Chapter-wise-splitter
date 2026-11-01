@@ -9,6 +9,9 @@
 
   const PAGE = 300;          // rows rendered at once
   const PLAN_PREVIEW = 200;  // output files listed in preview
+  const PREVIEW_CHARS = 150000; // preview modal shows at most this much text of a chapter
+  const MAX_FILE_MB = 300;   // hard safety limit (browser memory)
+  const WARN_FILE_MB = 60;
 
   const state = {
     book: null,          // reader result
@@ -20,7 +23,9 @@
     format: 'txt',
     shown: PAGE,
     search: '',
-    detectTimer: null
+    detectTimer: null,
+    job: null,           // {aborted} token of the running detection
+    loadJob: null        // {aborted} token of the running file load
   };
 
   /* ------------------------------------------------------------------ *
@@ -93,20 +98,13 @@
   }
   function selectedPatterns() { return $$('#patternList input:checked').map(i => i.value); }
 
-  /** count how many lines each pattern would match (helps the user choose) */
-  function updatePatternCounts(text) {
-    const lines = text.split('\n');
-    const limit = Math.min(lines.length, 400000);
+  /** count how many lines each pattern would match (helps the user choose). Runs in time slices. */
+  async function updatePatternCounts(text, signal, onProgress) {
+    const counts = await P.runTask(P.countPatternsIter(text), { signal, onProgress });
     Object.keys(P.PATTERNS).forEach(k => {
-      let n = 0;
-      const opts = { patterns: [k], maxHeadingLength: 120 };
-      for (let i = 0; i < limit; i++) {
-        const l = lines[i];
-        if (l.length > 120 || !l.trim()) continue;
-        if (P.matchHeading(l, opts)) n++;
-      }
+      const n = counts[k] || 0;
       const el = document.querySelector('[data-cnt="' + k + '"]');
-      if (el) el.textContent = n ? n + ' found' : '';
+      if (el) el.textContent = n ? fmtNum(n) + ' found' : '';
       patternCounts[k] = n;
     });
   }
@@ -132,12 +130,38 @@
    * ------------------------------------------------------------------ */
   async function loadFile(file) {
     const info = $('#fileInfo');
+    const mb = (file.size || 0) / 1048576;
+    if (mb > MAX_FILE_MB) {
+      info.classList.remove('hidden');
+      info.innerHTML = '<div class="fi-main"><b>❌ ' + P.escapeHtml(file.name) + '</b><span class="meta err">File ' + fmtSize(file.size) + ' ki hai — browser me ' + MAX_FILE_MB + ' MB tak ki file hi safely chal sakti hai.</span></div>';
+      return;
+    }
+    // cancel anything still running for the previous file
+    if (state.loadJob) state.loadJob.aborted = true;
+    if (state.job) state.job.aborted = true;
+    const job = state.loadJob = { aborted: false };
+    // free the previous book before reading the new one (keeps peak memory low)
+    state.book = null; state.result = null; state.chapters = []; state.front = null;
+    $('#chapterBody').innerHTML = '';
+    $('#detectBadge').textContent = '⏳ File load ho rahi hai…';
+    $('#detectHints').innerHTML = '';
+    $('#planList').innerHTML = '';
+    $('#planSummary').textContent = '';
+    $('#downloadZip').disabled = true;
+    $('#downloadEach').disabled = true;
     info.classList.remove('hidden');
-    info.innerHTML = '<div class="fi-main"><b>⏳ ' + P.escapeHtml(file.name) + '</b><span class="meta">Reading…</span></div>';
+    info.innerHTML = '<div class="fi-main"><b>⏳ ' + P.escapeHtml(file.name) + '</b><span class="meta">Reading… ' + fmtSize(file.size || 0) +
+      (mb > WARN_FILE_MB ? ' · badi file hai, thoda time lagega' : '') + '</span></div><button class="btn ghost small" id="cancelLoad">Cancel</button>';
+    $('#cancelLoad').onclick = () => { job.aborted = true; info.querySelector('.meta').textContent = 'Cancelled'; };
+    const meta = t => { const m = info.querySelector('.meta'); if (m && !job.aborted) m.textContent = t; };
     try {
-      const book = await R.readFile(file, $('#encoding').value, f => {
-        info.querySelector('.meta').textContent = 'Reading… ' + Math.round(f * 100) + '%';
-      });
+      const book = await R.readFile(file, $('#encoding').value, f => meta('Reading… ' + Math.round(f * 100) + '%'), job);
+      if (job.aborted) return;
+      meta('Headings scan ho rahi hain…');
+      const fullText = book.kind === 'text' ? book.text
+        : await P.runTask(R.bookTextIter(book), { signal: job, onProgress: f => meta('Text nikal rahe hain… ' + Math.round(f * 100) + '%') });
+      await updatePatternCounts(fullText, job, f => meta('Headings scan ho rahi hain… ' + Math.round(f * 100) + '%'));
+      if (job.aborted) return;
       state.book = book;
       showFileInfo(file, book);
       $('#bookTitle').value = book.meta.title || '';
@@ -147,16 +171,20 @@
         const md = $('#patternList input[value="markdown"]'); if (md) md.checked = true;
       }
       ['#step-chapters', '#step-split'].forEach(s => $(s).classList.remove('hidden'));
-      if (book.kind === 'text') updatePatternCounts(book.text);
-      else updatePatternCounts(book.docs.map(d => R.nodeToText(d.body)).join('\n\n'));
-      detect();
       $('#step-chapters').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      await detect();
     } catch (e) {
+      if (e && e.aborted) return;
       console.error(e);
-      info.innerHTML = '<div class="fi-main"><b>❌ ' + P.escapeHtml(file.name) + '</b><span class="meta err">' + P.escapeHtml(e.message || String(e)) + '</span></div>';
-      toast('File read nahi ho payi: ' + (e.message || e), 4000);
+      if (job.aborted) return;
+      const msg = isOom(e) ? 'Browser ki memory kam pad gayi. Doosre tabs band karke dobara try karein.' : (e.message || String(e));
+      info.innerHTML = '<div class="fi-main"><b>❌ ' + P.escapeHtml(file.name) + '</b><span class="meta err">' + P.escapeHtml(msg) + '</span></div>';
+      toast('File read nahi ho payi: ' + msg, 5000);
+    } finally {
+      if (state.loadJob === job) state.loadJob = null;
     }
   }
+  const isOom = e => e && (e instanceof RangeError || /memory|allocation|Invalid string length|Invalid array length/i.test(e.message || ''));
 
   function showFileInfo(file, book) {
     const info = $('#fileInfo');
@@ -181,32 +209,60 @@
     state.detectTimer = setTimeout(detect, 250);
   }
 
-  function detect() {
+  /** Chapter detection. Runs in small time slices (UI stays responsive); a newer call cancels an older one. */
+  async function detect() {
     if (!state.book) return;
+    if (state.job) state.job.aborted = true;
+    const job = state.job = { aborted: false };
+    const book = state.book;
     const t0 = performance.now();
+    const badge = $('#detectBadge');
+    const busy = f => { badge.textContent = '⏳ Chapters dhoondh rahe hain… ' + Math.round(f * 100) + '%'; };
+    busy(0);
+    document.documentElement.classList.add('busy');
     const textOpts = textOptions();
-    let res;
-    if (state.book.kind === 'epub') {
-      res = R.epubChapters(state.book, {
-        mode: state.epubMode,
-        tocDepth: parseInt($('#tocDepth').value, 10),
-        skipExtras: $('#skipExtras').checked,
-        text: textOpts
-      });
-    } else {
-      res = P.detectTextChapters(state.book.text, textOpts);
-      res.mode = 'text';
+    let res, chapters;
+    try {
+      if (book.kind === 'epub') {
+        res = await P.runTask(R.epubChaptersIter(book, {
+          mode: state.epubMode,
+          tocDepth: parseInt($('#tocDepth').value, 10),
+          skipExtras: $('#skipExtras').checked,
+          text: textOpts
+        }), { signal: job, onProgress: f => busy(f * 0.9) });
+      } else {
+        res = await P.runTask(P.detectTextChaptersIter(book.text, textOpts), { signal: job, onProgress: f => busy(f * 0.9) });
+        res.mode = 'text';
+      }
+      // word counts (also sliced – counting 50 MB of text takes ~1 s)
+      chapters = await P.runTask((function* () {
+        const out = new Array(res.chapters.length);
+        for (let i = 0; i < res.chapters.length; i++) {
+          const c = res.chapters[i];
+          out[i] = { index: i, title: c.title, origTitle: c.title, text: c.text, html: c.html, num: c.num, words: P.countWords(c.text), selected: true, edited: false };
+          yield 0.9 + 0.1 * i / res.chapters.length;
+        }
+        return out;
+      })(), { signal: job, onProgress: busy });
+    } catch (e) {
+      if (e && e.aborted) return;
+      console.error(e);
+      if (state.job === job) {
+        badge.textContent = '⚠ Error';
+        toast(isOom(e) ? 'Memory kam pad gayi — doosre tabs band karke dobara try karein.' : 'Chapters detect karte waqt error: ' + (e.message || e), 5000);
+      }
+      return;
+    } finally {
+      if (state.job === job) { state.job = null; document.documentElement.classList.remove('busy'); }
     }
+    if (job.aborted || state.book !== book) return;
     state.result = res;
     state.front = res.front;
-    state.chapters = res.chapters.map((c, i) => ({
-      index: i, title: c.title, origTitle: c.title, text: c.text, html: c.html, num: c.num,
-      words: P.countWords(c.text), selected: true, edited: false
-    }));
+    state.chapters = chapters;
     // If nothing was detected, treat the whole book as one chapter so the user can still export
     if (!state.chapters.length) {
-      const all = state.book.kind === 'epub' ? state.book.docs.map(d => R.nodeToText(d.body)).join('\n\n') : state.book.text;
-      if (all.trim()) state.chapters = [{ index: 0, title: state.book.meta.title || 'Full text', origTitle: 'Full text', text: all, words: P.countWords(all), selected: true, edited: false, whole: true }];
+      const all = book.kind === 'epub' ? R.bookText(book) : book.text;
+      if (P.countNonWs(all, 1)) state.chapters = [{ index: 0, title: book.meta.title || 'Full text', origTitle: 'Full text', text: all, words: P.countWords(all), selected: true, edited: false, whole: true }];
     }
     // pattern group is irrelevant for TOC / spine mode
     $('#patternGroup').style.opacity = (state.book.kind === 'epub' && res.mode !== 'text') ? .55 : 1;
@@ -291,7 +347,8 @@
     const ch = state.chapters;
     const words = ch.reduce((a, c) => a + c.words, 0);
     const avg = ch.length ? Math.round(words / ch.length) : 0;
-    const shortest = ch.length ? Math.min(...ch.map(c => c.words)) : 0;
+    let shortest = ch.length ? Infinity : 0;
+    for (const c of ch) if (c.words < shortest) shortest = c.words;
     $('#stats').innerHTML = [
       [fmtNum(ch.length), 'Chapters'], [fmtNum(words), 'Total words'],
       [fmtNum(avg), 'Avg words / chapter'], [fmtNum(shortest), 'Shortest chapter (words)']
@@ -395,11 +452,16 @@
     const c = i === -1 ? state.front : state.chapters[i];
     if (!c) return;
     $('#modalTitle').textContent = (i >= 0 ? (i + 1) + '. ' : '') + c.title + (splitMode ? ' — split karne ke liye paragraph pe click karein' : '');
-    const paras = P.textToParagraphs(c.text);
+    // only the start of very long chapters is rendered (keeps the modal fast for 50 MB books);
+    // paragraph indices stay identical to splitChapterAt() because the paragraph mode is fixed from the full text
+    const big = c.text.length > PREVIEW_CHARS;
+    const blankMode = /\n[^\S\n]*\n/.test(big ? c.text.slice(0, PREVIEW_CHARS * 4) : c.text);
+    const paras = P.textToParagraphs(big ? c.text.slice(0, PREVIEW_CHARS) : c.text, blankMode);
+    if (big && paras.length > 1) paras.pop(); // last one may be cut in the middle
     const maxP = 400;
     $('#modalBody').innerHTML = (paras.length ? paras.slice(0, maxP).map((p, k) =>
       '<p data-k="' + k + '"' + (splitMode && k > 0 ? ' class="splittable" title="Yahan se naya chapter shuru karein" style="cursor:pointer"' : '') + '>' + P.escapeHtml(p) + '</p>').join('') : '<p><i>(empty)</i></p>') +
-      (paras.length > maxP ? '<p><i>… ' + (paras.length - maxP) + ' more paragraphs</i></p>' : '');
+      (paras.length > maxP || big ? '<p><i>… aage aur text hai (preview me sirf shuru ka hissa dikhaya gaya hai)</i></p>' : '');
     $('#modalBody').onclick = splitMode ? (e => {
       const p = e.target.closest('p.splittable');
       if (p && confirm('Is paragraph se naya chapter shuru karein?\n\n“' + p.textContent.slice(0, 80) + '”')) splitChapterAt(i, +p.dataset.k);
@@ -480,6 +542,7 @@
     const selected = state.chapters.filter(c => c.selected);
     const { groups, error } = currentGroups(selected);
     if (error) { toast(error, 3500); return null; }
+    if (state.job) { toast('Chapters abhi detect ho rahe hain, ek second rukiye…'); return null; }
     const o = exportOptions();
     progress(0, 'Files ban rahi hain…');
     await tick();
@@ -509,12 +572,14 @@
       toast('✅ ZIP ready: ' + r.files.length + ' files');
       saveSettings();
     } catch (e) {
-      console.error(e); toast('Error: ' + (e.message || e), 4000); progress(null);
+      console.error(e); progress(null);
+      toast(isOom(e) ? 'Memory kam pad gayi. Format TXT karein ya "Har file alag" se download karein.' : 'Error: ' + (e.message || e), 5000);
     } finally { btn.disabled = false; }
   }
 
   async function downloadEach() {
-    const r = await build();
+    let r;
+    try { r = await build(); } catch (e) { console.error(e); progress(null); toast('Error: ' + (e.message || e), 5000); return; }
     if (!r) return;
     if (r.files.length > 15 && !confirm(r.files.length + ' files alag-alag download hongi. Browser permission maang sakta hai. Continue?')) { progress(null); return; }
     for (let i = 0; i < r.files.length; i++) {
@@ -542,6 +607,12 @@
    * Wiring
    * ------------------------------------------------------------------ */
   function init() {
+    // last line of defence: never leave the user with a silently broken page
+    window.addEventListener('error', e => { if (e && e.message && !/ResizeObserver/.test(e.message)) toast('⚠ ' + e.message, 5000); });
+    window.addEventListener('unhandledrejection', e => {
+      const r = e && e.reason; if (r && r.aborted) { e.preventDefault(); return; }
+      toast('⚠ ' + (isOom(r) ? 'Memory kam pad gayi — doosre tabs band karke dobara try karein.' : (r && r.message) || r), 5000);
+    });
     const saved = loadSettings();
     renderPatterns(saved);
     $('#minCharsOut').textContent = $('#minChars').value;

@@ -12,6 +12,18 @@ Bina kisi technical setting ke 3 step me kaam:
 - Agar chapters na milein / galat milein to **one-click "Try karein" buttons** milte hain (regex ya settings chhedne ki zaroorat nahi).
 - Encoding, regex, file-name template, TOC depth jaise options sirf **Advanced** mode (top-right toggle) me dikhte hain.
 
+## 🐘 Badi files (50 MB+) bina crash ke
+
+- Chapter detection **chhote time-slices** me chalti hai, isliye 50 MB ki file pe bhi page hang nahi hota. Progress % dikhta hai aur file load hote waqt **Cancel** ka button bhi milta hai.
+- Chapter text original text ka seedha slice hota hai, line-by-line copy nahi banti. Isliye memory kam lagti hai (50 MB TXT ≈ 55 MB heap).
+- Word count, short-chapter merge aur trim regex ke bina sirf char loop se hote hain, to bade arrays nahi bante.
+- EPUB ka text ek baar nikal kar cache hota hai. Har HTML file ke baad UI ko saans lene ka mauka milta hai.
+- Badi chapters ka preview sirf shuru ka hissa dikhata hai, table me ek baar me 300 rows aati hain, aur export bhi time-sliced hai.
+- Nayi file chunte hi purana kaam cancel ho jata hai aur purani book memory se hat jaati hai.
+- Memory khatam hone par crash ki jagah samajh me aane wala message aata hai. 300 MB se badi file pehle hi mana kar di jaati hai.
+
+**Test kiya hua (headless Chromium):** 50.8 MB TXT me 3000 chapters ~1.2 s me mile, UI sabse lamba sirf ~0.17 s ruka. 60 files ka TXT ZIP ~8 s me aur EPUB ZIP ~12 s me bana. 3000 chapters wala EPUB ~9 s me detect hua. Koi crash nahi hua.
+
 ## ✨ Features
 
 **Input:** `.epub` (EPUB 2 + 3), `.txt`, `.html`, `.md`
@@ -61,6 +73,8 @@ npm run fixtures     # tests/fixtures/*.epub banata hai
 npm start &          # server
 pip install playwright && python3 -m playwright install chromium
 npm test             # browser self-test + end-to-end UI test
+npm run fixtures:big # ~50 MB big.txt + 3000-chapter big.epub (tests/fixtures/big, git-ignored)
+npm run test:stress  # bade files UI se load + export, freeze time & memory check
 ```
 
 `tests/selftest.html` ko browser me khol kar bhi unit tests chala sakte hain.

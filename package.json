@@ -6,7 +6,9 @@
   "scripts": {
     "start": "python3 -m http.server 8080 --bind 0.0.0.0",
     "fixtures": "node tests/make-fixtures.js",
-    "test": "python3 tests/e2e.py"
+    "test": "python3 tests/e2e.py",
+    "fixtures:big": "node tests/make-big-fixtures.js",
+    "test:stress": "python3 tests/stress.py"
   },
   "devDependencies": {
     "jszip": "3.10.1"

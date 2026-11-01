@@ -144,12 +144,72 @@
     try { return new RegExp(src.trim(), 'iu'); } catch (e) { return { error: e.message }; }
   }
 
+  /* ------------------------------------------------------------------ *
+   * Cooperative scheduler: long jobs are written as generators that `yield`
+   * a progress fraction now and then. runSync() drives them in one go (Node,
+   * tests); runTask() drives them in small time slices so the browser UI never
+   * freezes, and supports cancellation via {signal:{aborted:true}}.
+   * ------------------------------------------------------------------ */
+  const now = (typeof performance !== 'undefined' && performance.now) ? () => performance.now() : () => Date.now();
+  const yieldToEventLoop = (function () {
+    if (typeof setImmediate === 'function') return () => new Promise(r => setImmediate(r));
+    if (typeof MessageChannel !== 'undefined') {
+      // MessageChannel is not throttled in background tabs (setTimeout is, to 1 s)
+      const ch = new MessageChannel(), q = [];
+      ch.port1.onmessage = () => { const r = q.shift(); if (r) r(); };
+      return () => new Promise(r => { q.push(r); ch.port2.postMessage(0); });
+    }
+    return () => new Promise(r => setTimeout(r, 0));
+  })();
+  function abortError() { const e = new Error('Cancelled'); e.aborted = true; return e; }
+
+  function runSync(it) {
+    for (;;) { const r = it.next(); if (r.done) return r.value; }
+  }
+  async function runTask(it, o) {
+    o = o || {};
+    const slice = o.slice || 30;
+    let last = now();
+    for (;;) {
+      const r = it.next();
+      if (r.done) return r.value;
+      if (now() - last > slice) {
+        if (o.onProgress && typeof r.value === 'number') o.onProgress(Math.min(1, r.value));
+        await yieldToEventLoop();
+        if (o.signal && o.signal.aborted) throw abortError();
+        last = now();
+      }
+    }
+  }
+  /** Re-maps progress yielded by a sub-generator into [a, b]. Use with yield*. */
+  function* sub(it, a, b) {
+    for (;;) {
+      const r = it.next();
+      if (r.done) return r.value;
+      yield typeof r.value === 'number' ? a + (b - a) * r.value : r.value;
+    }
+  }
+
+  /* fast char-class helpers (no regex, no allocation – safe on 50 MB strings) */
+  function isWs(c) {
+    return c === 32 || c === 10 || c === 13 || c === 9 || c === 11 || c === 12 || c === 160 || c === 0xFEFF || c === 0x3000 ||
+      (c >= 0x2000 && c <= 0x200A) || c === 0x2028 || c === 0x2029 || c === 0x202F || c === 0x205F || c === 0x1680;
+  }
+  /** number of non-whitespace chars, stops counting at `limit` */
+  function countNonWs(s, limit) {
+    let n = 0;
+    for (let i = 0, len = s.length; i < len; i++) if (!isWs(s.charCodeAt(i)) && ++n >= limit) break;
+    return n;
+  }
+
   /**
    * Test a single line. Returns {title, num, kind} or null.
    */
   function matchHeading(line, opts) {
+    const maxLen = opts.maxHeadingLength || 120;
+    if (line.length > maxLen * 3) return null; // quick reject for long paragraphs (no allocation)
     const t = line.replace(/\u00A0/g, ' ').trim();
-    if (!t || t.length > (opts.maxHeadingLength || 120)) return null;
+    if (!t || t.length > maxLen) return null;
     // strip decorative wrappers like "=== Chapter 1 ===", "**Chapter 1**", "【Chapter 1】"
     const s = t.replace(/^[\s*=_~#【\[《<«-]+(?=\S)/, m => (/^#{1,2}\s/.test(t) && opts.patterns.includes('markdown')) ? m : '')
       .replace(/[\s*=_~】\]》>»-]+$/, '').trim();
@@ -206,11 +266,24 @@
    * @returns {{front: {title,text}|null, chapters: Array<{title,num,text,kind}>}}
    */
   function detectTextChapters(text, options) {
+    return runSync(detectTextChaptersIter(text, options));
+  }
+
+  function* detectTextChaptersIter(text, options) {
     const opts = Object.assign(defaultTextOptions(), options || {});
     opts.customRe = compileCustom(opts.custom);
-    const lines = text.replace(/\r\n?/g, '\n').split('\n');
+    if (text.indexOf('\r') !== -1) text = text.replace(/\r\n?/g, '\n');
+    const lines = text.split('\n');
+    const n = lines.length;
+    // start offset of every line -> chapter bodies are cheap slices of `text` (no join/copy)
+    const off = new Float64Array(n + 1);
+    for (let i = 0, p = 0; i < n; i++) { off[i] = p; p += lines[i].length + 1; }
+    off[n] = text.length + 1;
+    yield 0.05;
     const heads = [];
-    for (let i = 0; i < lines.length; i++) {
+    let steps = 0;
+    for (let i = 0; i < n; i++) {
+      if ((++steps & 4095) === 0) yield 0.05 + 0.8 * i / n;
       if (opts.requireBlankBefore && i > 0 && lines[i - 1].trim() !== '') continue;
       const h = matchHeading(lines[i], opts);
       if (!h) continue;
@@ -232,18 +305,37 @@
       i = end;
     }
 
-    const body = (a, b) => trimBlankLines(lines.slice(a, b).join('\n'));
-    let chapters = heads.map((h, k) => ({
-      title: h.title,
-      num: h.num,
-      kind: h.kind,
-      text: body(h.end + 1, k + 1 < heads.length ? heads[k + 1].line : lines.length)
-    }));
-    const frontText = body(0, heads.length ? heads[0].line : lines.length);
-    let front = frontText ? { title: 'Front matter', text: frontText } : null;
+    const body = (a, b) => trimBlankLines(text.slice(off[a], off[b]));
+    const chapters = new Array(heads.length);
+    for (let k = 0; k < heads.length; k++) {
+      const h = heads[k];
+      chapters[k] = { title: h.title, num: h.num, kind: h.kind, text: body(h.end + 1, k + 1 < heads.length ? heads[k + 1].line : n) };
+      if ((k & 1023) === 1023) yield 0.85 + 0.1 * k / heads.length;
+    }
+    const frontText = body(0, heads.length ? heads[0].line : n);
+    const front = frontText ? { title: 'Front matter', text: frontText } : null;
+    yield 0.97;
+    return mergeShortChapters(chapters, front, opts.minChars);
+  }
 
-    const res = mergeShortChapters(chapters, front, opts.minChars);
-    return res;
+  /** How many lines each heading pattern matches (one pass, generator). */
+  function* countPatternsIter(text, keys) {
+    keys = keys || Object.keys(PATTERNS);
+    const counts = {}, optsList = keys.map(k => ({ patterns: [k], maxHeadingLength: 120 }));
+    keys.forEach(k => { counts[k] = 0; });
+    const len = text.length;
+    let pos = 0, steps = 0;
+    while (pos < len) {
+      let e = text.indexOf('\n', pos);
+      if (e === -1) e = len;
+      if (e - pos <= 122 && e > pos) {
+        const l = text.slice(pos, e);
+        if (l.trim()) for (let j = 0; j < keys.length; j++) if (matchHeading(l, optsList[j])) counts[keys[j]]++;
+      }
+      pos = e + 1;
+      if ((++steps & 2047) === 0) yield pos / len;
+    }
+    return counts;
   }
 
   /**
@@ -254,7 +346,7 @@
   function mergeShortChapters(chapters, front, minChars) {
     minChars = Math.max(0, minChars | 0);
     if (!minChars || chapters.length < 2) return { front, chapters };
-    const isShort = c => c.text.replace(/\s+/g, '').length < minChars;
+    const isShort = c => countNonWs(c.text, minChars) < minChars;
     const firstReal = chapters.findIndex(c => !isShort(c));
     if (firstReal === -1) return { front, chapters }; // everything is short – leave as is
     const out = [];
@@ -287,8 +379,19 @@
     return { front, chapters: out };
   }
 
+  /** Drop leading blank lines (keeping the first line's indent) and trailing whitespace. Linear, regex-free. */
   function trimBlankLines(s) {
-    return s.replace(/^\s*\n/, '').replace(/\n\s*$/, '').replace(/^\n+|\n+$/g, '');
+    const len = s.length;
+    let i = 0, start = 0;
+    while (i < len) {
+      const c = s.charCodeAt(i);
+      if (c === 10) start = i + 1; else if (!isWs(c)) break;
+      i++;
+    }
+    if (i >= len) return '';
+    let j = len;
+    while (j > start && isWs(s.charCodeAt(j - 1))) j--;
+    return start === 0 && j === len ? s : s.slice(start, j);
   }
 
   /* ------------------------------------------------------------------ *
@@ -351,18 +454,29 @@
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  /** Words (+ each CJK character counts as one word). Single char loop: no huge match arrays. */
   function countWords(s) {
     if (!s) return 0;
-    const cjk = (s.match(/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]/g) || []).length;
-    const words = (s.replace(/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]/g, ' ').match(/\S+/g) || []).length;
-    return words + cjk;
+    let n = 0, inWord = false;
+    for (let i = 0, len = s.length; i < len; i++) {
+      const c = s.charCodeAt(i);
+      if ((c >= 0x3040 && c <= 0x30FF) || (c >= 0x3400 && c <= 0x9FFF) || (c >= 0xF900 && c <= 0xFAFF)) { n++; inWord = false; }
+      else if (isWs(c)) inWord = false;
+      else if (!inWord) { n++; inWord = true; }
+    }
+    return n;
   }
 
-  /** Paragraphs from plain text: blank-line separated, or one per line if no blank lines. */
-  function textToParagraphs(text) {
-    const t = String(text || '').replace(/\r\n?/g, '\n').trim();
+  /**
+   * Paragraphs from plain text: blank-line separated, or one per line if no blank lines.
+   * `blankMode` (optional) forces the mode – used when previewing only the start of a huge chapter.
+   */
+  function textToParagraphs(text, blankMode) {
+    let t = String(text || '');
+    if (t.indexOf('\r') !== -1) t = t.replace(/\r\n?/g, '\n');
+    t = t.trim();
     if (!t) return [];
-    if (/\n\s*\n/.test(t)) {
+    if (blankMode != null ? blankMode : /\n\s*\n/.test(t)) {
       return t.split(/\n\s*\n+/).map(p => p.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean);
     }
     return t.split('\n').map(p => p.trim()).filter(Boolean);
@@ -385,8 +499,9 @@
   return {
     PATTERNS, DEFAULT_PATTERNS,
     parseNumber, romanToInt, wordsToInt, cjkToInt, normalizeDigits, extractNumber,
-    matchHeading, detectTextChapters, mergeShortChapters, defaultTextOptions, compileCustom,
+    matchHeading, detectTextChapters, detectTextChaptersIter, countPatternsIter, mergeShortChapters, defaultTextOptions, compileCustom,
     makeGroups, parseRanges,
-    escapeHtml, countWords, textToParagraphs, sanitizeFilename, looksLikeNonChapter
+    escapeHtml, countWords, countNonWs, trimBlankLines, textToParagraphs, sanitizeFilename, looksLikeNonChapter,
+    runSync, runTask, sub, yieldToEventLoop, now
   };
 });
