@@ -28,6 +28,22 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* display serif — used only for the two big headlines (contrast against Inter) */
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/instrument-serif-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/instrument-serif-latin-italic.woff2') format('woff2');
+}
+
 /* ------------------------------------------------------------------ base */
 @layer base {
   html { @apply antialiased; font-feature-settings: 'cv11', 'ss01'; color-scheme: light; }
@@ -68,7 +84,47 @@
     @apply mt-0.5 grid h-6 w-6 flex-none place-items-center rounded-full border border-zinc-300 text-xs font-semibold
            tabular-nums text-zinc-600 dark:border-zinc-700 dark:text-zinc-400;
   }
-  .eyebrow { @apply text-2xs font-medium uppercase tracking-[0.08em] text-zinc-500 dark:text-zinc-400; }
+  .eyebrow { @apply text-2xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400; }
+  .card-title { @apply text-base font-semibold tracking-tight; }
+
+  /* typography: headline + lede */
+  .display {
+    font-family: 'Instrument Serif', Charter, 'Iowan Old Style', Georgia, 'Noto Serif', serif;
+    @apply text-[40px] font-normal leading-[1.02] tracking-[-0.015em] text-zinc-950 sm:text-[56px] dark:text-white;
+  }
+  .display em { @apply italic text-zinc-500 dark:text-zinc-400; }
+  .display.small { @apply text-[32px] sm:text-[42px]; }
+  .lede { @apply max-w-xl text-[16px] leading-7 text-zinc-600 sm:text-[17px] dark:text-zinc-400; }
+
+  /* Telegram bot promo */
+  .bot-pill {
+    @apply inline-flex h-8 items-center gap-1.5 rounded-full border border-zinc-200 bg-white pl-1 pr-1.5 text-xs font-medium text-zinc-700 shadow-xs
+           transition-colors hover:border-zinc-300 hover:text-zinc-950 sm:pr-3
+           dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:text-white;
+  }
+  .bot-pill img { @apply h-[22px] w-[22px] rounded-full; }
+  .bot-card {
+    @apply flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-card transition-all
+           hover:-translate-y-px hover:border-zinc-300 hover:shadow-pop
+           dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600;
+  }
+  .bot-logo { @apply h-14 w-14 flex-none rounded-full ring-1 ring-zinc-900/10 dark:ring-white/10; }
+  .bot-arrow {
+    @apply grid h-8 w-8 flex-none place-items-center rounded-full border border-zinc-200 text-zinc-400 transition-colors
+           dark:border-zinc-700;
+  }
+  .bot-card:hover .bot-arrow { @apply border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900; }
+  .bot-arrow svg { @apply h-4 w-4; }
+  .bot-section {
+    @apply mt-6 flex flex-col gap-6 rounded-2xl border border-zinc-200 bg-white px-6 py-8 shadow-card sm:flex-row sm:items-start sm:gap-8 sm:px-8 sm:py-10
+           dark:border-zinc-800 dark:bg-zinc-900;
+  }
+  .bot-hero-logo { @apply flex-none self-start transition-transform hover:scale-[1.03]; }
+  .bot-hero-logo img { @apply h-24 w-24 rounded-full shadow-pop ring-1 ring-zinc-900/10 sm:h-28 sm:w-28 dark:ring-white/10; }
+  .bot-facts { @apply grid list-none gap-x-8 gap-y-4 p-0 sm:grid-cols-2; }
+  .bot-facts li { @apply border-l-2 border-zinc-200 pl-3.5 dark:border-zinc-700; }
+  .bot-facts b { @apply block text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100; }
+  .bot-facts span { @apply mt-0.5 block text-[13px] leading-5 text-zinc-500 dark:text-zinc-400; }
   .section-label { @apply mb-2.5 text-sm font-medium text-zinc-900 dark:text-zinc-100; }
   .section-label small { @apply font-normal; }
   small { @apply text-zinc-500 dark:text-zinc-400; }
@@ -282,10 +338,12 @@
   .modal-body p.splittable { @apply -mx-3 rounded-md px-3 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800; }
 
   /* steps strip */
-  .howto-step { @apply flex items-center gap-3; }
+  .howto { @apply flex flex-wrap items-center gap-x-8 gap-y-2 border-y border-zinc-200 py-4 dark:border-zinc-800; }
+  .howto-step { @apply flex items-center gap-2.5 text-sm; }
+  .howto-step b { @apply font-medium text-zinc-800 dark:text-zinc-200; }
   .h-num {
-    @apply grid h-7 w-7 flex-none place-items-center rounded-full border border-zinc-300 bg-white text-xs font-semibold tabular-nums text-zinc-700
-           dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300;
+    @apply grid h-6 w-6 flex-none place-items-center rounded-full bg-zinc-900 text-2xs font-semibold tabular-nums text-white
+           dark:bg-zinc-100 dark:text-zinc-900;
   }
 }
 
