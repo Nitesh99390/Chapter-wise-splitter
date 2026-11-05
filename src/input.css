@@ -37,17 +37,20 @@
 
   input[type='text'], input[type='search'], input[type='number'], input:not([type]), select {
     @apply rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-xs
-           placeholder:text-zinc-400 transition-colors
-           focus:border-zinc-900 focus:outline-none focus:ring-4 focus:ring-zinc-900/5
+           placeholder:text-zinc-400 transition-all duration-200
+           hover:border-zinc-400 focus:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-600/30
            dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500
-           dark:focus:border-zinc-300 dark:focus:ring-white/5;
+           dark:hover:border-zinc-600 dark:focus:border-zinc-600 dark:focus:ring-zinc-600;
   }
   select { @apply pr-8; }
   input[type='checkbox'] { @apply h-4 w-4 cursor-pointer rounded accent-zinc-900 dark:accent-zinc-200; }
-  input[type='range'] { @apply w-full cursor-pointer accent-zinc-900 dark:accent-zinc-200; }
-  button:focus-visible, summary:focus-visible, label:focus-visible, [contenteditable]:focus-visible {
-    @apply outline-none ring-2 ring-zinc-900 ring-offset-2 ring-offset-white dark:ring-zinc-200 dark:ring-offset-zinc-950;
+  input[type='range'] { @apply w-full cursor-pointer rounded-full accent-zinc-900 dark:accent-zinc-200; }
+  /* one elegant focus ring for every interactive element (keyboard focus only, so mouse clicks stay clean) */
+  button:focus-visible, a:focus-visible, summary:focus-visible, label:focus-visible, [tabindex]:focus-visible,
+  input[type='checkbox']:focus-visible, input[type='range']:focus-visible {
+    @apply outline-none ring-2 ring-zinc-600 ring-offset-2 ring-offset-white dark:ring-offset-zinc-950;
   }
+  a, summary { @apply transition-all duration-200; }
   code, kbd {
     @apply rounded border border-zinc-200 bg-zinc-100 px-1.5 py-px font-mono text-[0.8em] text-zinc-700
            dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300;
@@ -59,8 +62,11 @@
 /* ------------------------------------------------------------------ components */
 @layer components {
   /* surfaces */
+  /* cards are rounded-xl; everything nested inside them is rounded-lg (and rounded-md one level deeper).
+     dark mode: hairline zinc-800 border + a 1px inset top highlight for a subtle sense of depth */
   .card {
-    @apply rounded-xl border border-zinc-200 bg-white shadow-card dark:border-zinc-800 dark:bg-zinc-900;
+    @apply rounded-xl border border-zinc-200 bg-white shadow-card
+           dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[inset_0_1px_0_0_rgb(255_255_255/0.04),0_1px_2px_0_rgb(0_0_0/0.4)];
   }
   .card-head { @apply flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-zinc-100 px-5 py-4 sm:px-6 dark:border-zinc-800; }
   .card-body { @apply px-5 py-5 sm:px-6; }
@@ -69,17 +75,17 @@
            tabular-nums text-zinc-600 dark:border-zinc-700 dark:text-zinc-400;
   }
   .eyebrow { @apply text-2xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400; }
-  .card-title { @apply text-base font-semibold tracking-tight; }
+  .card-title { @apply text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100; }
   /* raised card (upload step): lighter surface + visible border so it reads as a dropzone in dark mode */
-  .card-raised { @apply dark:border-zinc-700 dark:bg-zinc-800 dark:shadow-none; }
+  .card-raised { @apply dark:border-zinc-700 dark:bg-zinc-800 dark:shadow-[inset_0_1px_0_0_rgb(255_255_255/0.05),0_1px_2px_0_rgb(0_0_0/0.4)]; }
   .card-raised .card-head { @apply dark:border-zinc-700; }
-  .card-raised .dropzone { @apply dark:border-zinc-600 dark:bg-zinc-900/60 dark:hover:border-zinc-400 dark:hover:bg-zinc-900; }
+  .card-raised .dropzone { @apply dark:border-zinc-600 dark:bg-zinc-900/60 dark:hover:border-zinc-500 dark:hover:bg-zinc-700/40; }
   .card-raised .file-info { @apply dark:border-zinc-700 dark:bg-zinc-900/60; }
 
   /* typography: headline + lede */
   /* one uniform, bold Inter headline — no serif / italic mix */
   .display {
-    @apply font-sans text-[40px] font-bold not-italic leading-[1.05] tracking-[-0.035em] text-zinc-950 sm:text-[64px] dark:text-white;
+    @apply font-sans text-[40px] font-bold not-italic leading-[1.05] tracking-[-0.035em] text-zinc-950 sm:text-[64px] dark:text-zinc-100;
     text-wrap: balance;
   }
   .display.small { @apply text-[32px] tracking-[-0.03em] sm:text-[44px]; }
@@ -88,21 +94,21 @@
   /* Telegram bot promo */
   .bot-pill {
     @apply inline-flex h-8 items-center gap-1.5 rounded-full border border-zinc-200 bg-white pl-1 pr-1.5 text-xs font-medium text-zinc-700 shadow-xs
-           transition-colors hover:border-zinc-300 hover:text-zinc-950 sm:pr-3
-           dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:text-white;
+           transition-all duration-200 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-950 sm:pr-3
+           dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-100;
   }
   .bot-pill img { @apply h-[22px] w-[22px] rounded-full; }
   .bot-section {
     @apply mt-6 flex flex-col gap-6 rounded-2xl border border-zinc-200 bg-white px-6 py-8 shadow-card sm:flex-row sm:items-start sm:gap-8 sm:px-8 sm:py-10
-           dark:border-zinc-800 dark:bg-zinc-900;
+           dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[inset_0_1px_0_0_rgb(255_255_255/0.04),0_1px_2px_0_rgb(0_0_0/0.4)];
   }
-  .bot-hero-logo { @apply flex-none self-start transition-transform hover:scale-[1.03]; }
+  .bot-hero-logo { @apply flex-none self-start rounded-full transition-all duration-200 hover:scale-[1.03]; }
   /* transparent cut-out logo: no white disc, ring or box shadow — a soft drop-shadow follows the badge outline */
   .bot-hero-logo img { @apply h-24 w-24 border-0 bg-transparent sm:h-28 sm:w-28; filter: drop-shadow(0 6px 14px rgb(0 0 0 / 0.18)); }
   .bot-facts { @apply grid list-none gap-x-8 gap-y-4 p-0 sm:grid-cols-2; }
   .bot-facts li { @apply border-l-2 border-zinc-200 pl-3.5 dark:border-zinc-700; }
   .bot-facts b { @apply block text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100; }
-  .bot-facts span { @apply mt-0.5 block text-[13px] leading-5 text-zinc-500 dark:text-zinc-400; }
+  .bot-facts span { @apply mt-0.5 block text-[13px] leading-5 text-zinc-600 dark:text-zinc-400; }
   .section-label { @apply mb-2.5 text-sm font-medium text-zinc-900 dark:text-zinc-100; }
   .section-label small { @apply font-normal; }
   small { @apply text-zinc-500 dark:text-zinc-400; }
@@ -110,16 +116,16 @@
   /* buttons */
   .btn {
     @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-zinc-300 bg-white
-           px-4 py-2 text-sm font-medium text-zinc-800 shadow-xs transition-colors
-           hover:bg-zinc-50 hover:text-zinc-950 active:bg-zinc-100
+           px-4 py-2 text-sm font-medium text-zinc-800 shadow-xs transition-all duration-200
+           hover:border-zinc-400 hover:bg-zinc-50 hover:text-zinc-950 active:scale-[0.98] active:bg-zinc-100 disabled:active:scale-100
            disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white
-           dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:hover:text-white
+           dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-100
            dark:active:bg-zinc-700 dark:disabled:hover:bg-zinc-900;
   }
   .btn svg { @apply h-4 w-4 flex-none; }
   .btn.small { @apply gap-1.5 rounded-md px-2.5 py-1.5 text-[13px]; }
   .btn.small svg { @apply h-3.5 w-3.5; }
-  .btn.ghost { @apply border-transparent bg-transparent shadow-none hover:bg-zinc-100 dark:bg-transparent dark:hover:bg-zinc-800; }
+  .btn.ghost { @apply border-transparent bg-transparent text-zinc-600 shadow-none hover:border-transparent hover:bg-zinc-100 dark:bg-transparent dark:text-zinc-300 dark:hover:border-transparent dark:hover:bg-zinc-800; }
   .btn.ghost.outline { @apply border-zinc-300 dark:border-zinc-700; }
   .btn.primary {
     @apply border-zinc-900 bg-zinc-900 text-white hover:border-zinc-800 hover:bg-zinc-800 hover:text-white active:bg-zinc-950
@@ -129,7 +135,7 @@
   }
   .btn.big { @apply h-11 px-5 text-[15px]; }
   .icon-btn {
-    @apply inline-grid h-8 w-8 place-items-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900
+    @apply inline-grid h-8 w-8 place-items-center rounded-md text-zinc-500 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-900 active:scale-95
            disabled:pointer-events-none disabled:opacity-30 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100;
   }
   .icon-btn svg { @apply h-4 w-4; }
@@ -137,41 +143,48 @@
   /* segmented control (JS toggles .on) */
   .seg { @apply inline-flex flex-wrap gap-0.5 rounded-lg border border-zinc-200 bg-zinc-100 p-0.5 dark:border-zinc-800 dark:bg-zinc-800/60; }
   .seg button {
-    @apply rounded-md px-3 py-1.5 text-[13px] font-medium text-zinc-600 transition-colors hover:text-zinc-900
-           dark:text-zinc-400 dark:hover:text-zinc-100;
+    @apply rounded-md px-3 py-1.5 text-[13px] font-medium text-zinc-600 transition-all duration-200 hover:bg-white/60 hover:text-zinc-900
+           dark:text-zinc-400 dark:hover:bg-zinc-700/50 dark:hover:text-zinc-100;
   }
-  .seg button.on { @apply bg-white text-zinc-900 shadow-xs ring-1 ring-zinc-900/[0.06] dark:bg-zinc-950 dark:text-zinc-50 dark:ring-white/10; }
+  .seg button.on { @apply bg-white text-zinc-900 shadow-xs ring-1 ring-zinc-900/[0.06] hover:bg-white dark:bg-zinc-950 dark:text-zinc-100 dark:ring-white/10 dark:hover:bg-zinc-950; }
   .mode-seg { @apply flex-nowrap; }
   .mode-seg button { @apply whitespace-nowrap px-2.5 py-1 text-xs; }
 
   /* chips (presets / tokens) */
   .presets, .tokens { @apply flex flex-wrap gap-1.5; }
   .presets button, .tokens button {
-    @apply h-7 min-w-[2.25rem] rounded-md border border-zinc-200 bg-white px-2.5 text-[13px] tabular-nums text-zinc-600 transition-colors
-           hover:border-zinc-300 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400
-           dark:hover:border-zinc-600 dark:hover:text-zinc-100;
+    @apply h-7 min-w-[2.25rem] rounded-md border border-zinc-200 bg-white px-2.5 text-[13px] tabular-nums text-zinc-600 transition-all duration-200
+           hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900 active:scale-95 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400
+           dark:hover:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-100;
   }
-  .presets button.on { @apply border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900; }
+  .presets button.on { @apply border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800 hover:text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white dark:hover:text-zinc-900; }
   .tokens button { @apply font-mono text-xs; }
 
   /* number stepper */
-  .big-number { @apply inline-flex items-stretch overflow-hidden rounded-lg border border-zinc-300 bg-white shadow-xs dark:border-zinc-700 dark:bg-zinc-900; }
+  .big-number {
+    @apply inline-flex items-stretch overflow-hidden rounded-lg border border-zinc-300 bg-white shadow-xs transition-all duration-200
+           focus-within:border-zinc-600 focus-within:ring-2 focus-within:ring-zinc-600/30
+           dark:border-zinc-700 dark:bg-zinc-900 dark:focus-within:border-zinc-600 dark:focus-within:ring-zinc-600;
+  }
   .big-number input {
     @apply w-20 rounded-none border-0 border-x border-zinc-200 bg-transparent px-1 py-0 text-center text-lg font-semibold tabular-nums shadow-none
-           focus:ring-0 dark:border-zinc-800;
+           hover:border-zinc-200 focus:border-zinc-200 focus:ring-0 dark:border-zinc-800 dark:hover:border-zinc-800 dark:focus:border-zinc-800 dark:focus:ring-0;
   }
-  .step-btn { @apply grid h-11 w-11 place-items-center text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100; }
+  .step-btn {
+    @apply grid h-11 w-11 place-items-center text-zinc-500 transition-all duration-200 hover:bg-zinc-50 hover:text-zinc-900 active:bg-zinc-100
+           focus-visible:ring-inset focus-visible:ring-offset-0 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:active:bg-zinc-700;
+  }
   .step-btn svg { @apply h-4 w-4; }
 
   /* format picker (JS toggles .on) */
   .format-cards { @apply grid grid-cols-2 gap-2 sm:grid-cols-4; }
   .format-cards button {
-    @apply relative flex flex-col items-start gap-0.5 rounded-lg border border-zinc-200 bg-white px-3.5 py-3 text-left transition-colors
-           hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600;
+    @apply relative flex flex-col items-start gap-0.5 rounded-lg border border-zinc-200 bg-white px-3.5 py-3 text-left transition-all duration-200
+           hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800;
   }
   .format-cards button b { @apply text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100; }
   .format-cards button small { @apply text-xs leading-snug; }
-  .format-cards button.on { @apply border-zinc-900 ring-1 ring-zinc-900 dark:border-zinc-200 dark:ring-zinc-200; }
+  .format-cards button.on { @apply border-zinc-900 ring-1 ring-zinc-900 dark:border-zinc-300 dark:ring-zinc-300; }
   .format-cards button.on::after {
     content: ''; @apply absolute right-3 top-3.5 h-1.5 w-1.5 rounded-full bg-zinc-900 dark:bg-zinc-100;
   }
@@ -181,7 +194,10 @@
   label.block > input[type='text'], label.block > input:not([type]) { display: block; @apply mt-1.5 w-full font-normal; }
   label.block > input[type='range'] { display: block; @apply mt-2; }
   label.inline { @apply inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300; }
-  label.check { @apply my-1 flex cursor-pointer items-start gap-2.5 rounded-md py-1 text-sm text-zinc-700 dark:text-zinc-300; }
+  label.check {
+    @apply -mx-1.5 my-1 flex cursor-pointer items-start gap-2.5 rounded-md px-1.5 py-1 text-sm text-zinc-700 transition-all duration-200
+           hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800;
+  }
   label.check input { @apply mt-[3px] flex-none; }
   label.check small { @apply text-zinc-500; }
   .hint { @apply mt-1.5 block text-xs font-normal leading-5; }
@@ -192,7 +208,7 @@
   span.err { @apply mt-1 block border-0 bg-transparent p-0 dark:bg-transparent; }
   .help {
     @apply relative inline-grid h-4 w-4 cursor-help place-items-center rounded-full border border-zinc-300 text-[10px] font-semibold text-zinc-500
-           dark:border-zinc-600 dark:text-zinc-400;
+           transition-all duration-200 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-400 dark:hover:text-zinc-100;
   }
   .help:hover::after, .help:focus::after {
     content: attr(data-tip);
@@ -202,17 +218,20 @@
 
   /* dropzone (JS toggles .drag) */
   .dropzone {
-    @apply flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/60
-           px-6 py-12 text-center transition-colors hover:border-zinc-400 hover:bg-zinc-50
-           dark:border-zinc-700 dark:bg-zinc-950/40 dark:hover:border-zinc-500 dark:hover:bg-zinc-950;
+    @apply flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-zinc-300 bg-zinc-50/60
+           px-6 py-12 text-center transition-all duration-200 hover:border-zinc-400 hover:bg-zinc-100/70
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2
+           dark:border-zinc-700 dark:bg-zinc-950/40 dark:hover:border-zinc-500 dark:hover:bg-zinc-800 dark:focus-visible:ring-offset-zinc-800;
   }
+  .dropzone > span:first-of-type { @apply transition-all duration-200; }
+  .dropzone:hover > span:first-of-type { @apply -translate-y-0.5 text-zinc-700 dark:text-zinc-200; }
   .dropzone.drag { @apply border-solid border-zinc-900 bg-zinc-100 dark:border-zinc-200 dark:bg-zinc-800/60; }
 
   /* file info (markup rendered by app.js) */
   .file-info {
     @apply mt-4 flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/40;
   }
-  .file-info img { @apply h-16 w-11 rounded object-cover shadow-xs ring-1 ring-zinc-900/10; }
+  .file-info img { @apply h-16 w-11 rounded-md object-cover shadow-xs ring-1 ring-zinc-900/10 dark:ring-white/10; }
   .file-info .fi-main { @apply min-w-[200px] flex-1; }
   .file-info b { @apply block text-sm font-semibold text-zinc-900 dark:text-zinc-100; }
   .file-info .meta { @apply text-[13px] text-zinc-500 dark:text-zinc-400; }
@@ -238,7 +257,10 @@
   .hint-card .ht b { @apply font-semibold text-zinc-900 dark:text-zinc-100; }
   .hint-card .ht small { @apply mt-0.5 block text-[13px] leading-5 text-zinc-600 dark:text-zinc-400; }
   .hint-card .fixes { @apply flex w-full flex-wrap gap-2 pl-[30px]; }
-  .hint-card .fixes .btn.ghost { @apply border-zinc-300 bg-white shadow-xs hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800; }
+  .hint-card .fixes .btn.ghost {
+    @apply border-zinc-300 bg-white text-zinc-800 shadow-xs hover:border-zinc-400 hover:bg-zinc-50
+           dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800;
+  }
 
   /* chapter table */
   .chapter-table-wrap { @apply max-h-[480px] overflow-auto rounded-lg border border-zinc-200 dark:border-zinc-800; }
@@ -247,9 +269,9 @@
     @apply sticky top-0 z-[1] border-b border-zinc-200 bg-zinc-50/95 px-3 py-2.5 text-left text-2xs font-medium uppercase tracking-[0.06em]
            text-zinc-500 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95 dark:text-zinc-400;
   }
-  .chapter-table td { @apply border-b border-zinc-100 px-3 py-2 align-middle dark:border-zinc-800/70; }
+  .chapter-table td { @apply border-b border-zinc-100 px-3 py-2 align-middle text-zinc-700 dark:border-zinc-800/70 dark:text-zinc-300; }
   .chapter-table tbody tr:last-child td { @apply border-b-0; }
-  .chapter-table tbody tr { @apply transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40; }
+  .chapter-table tbody tr { @apply transition-all duration-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60; }
   .chapter-table tr.off td:not(.c-chk) { @apply opacity-40; }
   .chapter-table tr.short .c-words { @apply text-amber-600 dark:text-amber-400; }
   .c-chk { @apply w-10; }
@@ -257,13 +279,13 @@
   .c-words { @apply w-24 text-right tabular-nums text-zinc-500 dark:text-zinc-400; }
   th.c-words { @apply text-right; }
   .c-act { @apply w-[108px] whitespace-nowrap text-right; }
-  .c-title { @apply -mx-1 cursor-text rounded px-1 py-0.5 text-zinc-800 outline-none dark:text-zinc-200; }
-  .c-title:hover { @apply bg-zinc-100 dark:bg-zinc-800; }
-  .c-title:focus { @apply bg-white ring-1 ring-zinc-900 dark:bg-zinc-950 dark:ring-zinc-300; }
+  .c-title { @apply -mx-1 cursor-text rounded-md px-1 py-0.5 text-zinc-700 outline-none transition-all duration-200 dark:text-zinc-300; }
+  .c-title:hover { @apply bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100; }
+  .c-title:focus { @apply bg-white text-zinc-900 ring-2 ring-zinc-600 dark:bg-zinc-950 dark:text-zinc-100; }
   .c-title.edited::after { content: 'edited'; @apply ml-2 rounded border border-zinc-200 px-1 py-px align-middle text-[10px] font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700; }
   .row-btn {
-    @apply inline-grid h-7 w-7 place-items-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-200/70 hover:text-zinc-900
-           dark:text-zinc-500 dark:hover:bg-zinc-700 dark:hover:text-zinc-100;
+    @apply inline-grid h-7 w-7 place-items-center rounded-md text-zinc-400 transition-all duration-200 hover:bg-zinc-200/70 hover:text-zinc-900
+           active:scale-95 dark:text-zinc-500 dark:hover:bg-zinc-700 dark:hover:text-zinc-100;
   }
   .row-btn svg { @apply h-[15px] w-[15px]; }
   .front-row {
@@ -277,12 +299,12 @@
   /* detection settings */
   .pattern-list { @apply grid gap-1.5; }
   .pattern-list label {
-    @apply flex cursor-pointer items-start gap-2.5 rounded-lg border border-zinc-200 px-3 py-2 text-sm transition-colors
-           hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-600;
+    @apply flex cursor-pointer items-start gap-2.5 rounded-lg border border-zinc-200 px-3 py-2 text-sm transition-all duration-200
+           hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:border-zinc-700 dark:hover:bg-zinc-800;
   }
-  .pattern-list label:has(input:checked) { @apply border-zinc-400 bg-zinc-50 dark:border-zinc-500 dark:bg-zinc-800/50; }
+  .pattern-list label:has(input:checked) { @apply border-zinc-400 bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800/60; }
   .pattern-list input { @apply mt-[3px] flex-none; }
-  .pattern-list b { @apply font-medium text-zinc-800 dark:text-zinc-200; }
+  .pattern-list b { @apply font-medium text-zinc-800 dark:text-zinc-300; }
   .pattern-list small { @apply block font-mono text-xs; }
   .pattern-list .cnt { @apply ml-auto whitespace-nowrap pt-0.5 text-xs tabular-nums text-zinc-500; }
   .opt-group + .opt-group { @apply mt-6; }
@@ -297,13 +319,16 @@
   /* output plan */
   .plan-list { @apply mt-3 grid max-h-72 list-none grid-cols-1 gap-1.5 overflow-auto p-0 md:grid-cols-2; }
   .plan-list li {
-    @apply flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white py-1.5 pl-3 pr-1.5 text-[13px]
-           dark:border-zinc-800 dark:bg-zinc-900;
+    @apply flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white py-1.5 pl-3 pr-1.5 text-[13px] transition-all duration-200
+           hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800;
   }
-  .plan-list li .pn { @apply inline-flex min-w-0 items-center gap-2 truncate text-zinc-800 dark:text-zinc-200; }
+  .plan-list li .pn { @apply inline-flex min-w-0 items-center gap-2 truncate text-zinc-700 dark:text-zinc-300; }
   .plan-list li .pn svg { @apply h-4 w-4 flex-none text-zinc-400; }
   .plan-list li .pc { @apply inline-flex flex-none items-center gap-2 whitespace-nowrap text-xs tabular-nums text-zinc-500; }
-  .plan-list li button { @apply inline-grid h-7 w-7 place-items-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100; }
+  .plan-list li button {
+    @apply inline-grid h-7 w-7 place-items-center rounded-md text-zinc-400 transition-all duration-200 hover:bg-zinc-200/70 hover:text-zinc-900
+           active:scale-95 dark:hover:bg-zinc-700 dark:hover:text-zinc-100;
+  }
   .plan-list li button svg { @apply h-4 w-4; }
 
   /* progress (JS sets span width + .ptext) */
@@ -313,12 +338,12 @@
 
   /* preview modal */
   .modal-body p { @apply my-3; }
-  .modal-body p.splittable { @apply -mx-3 rounded-md px-3 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800; }
+  .modal-body p.splittable { @apply -mx-3 rounded-md px-3 transition-all duration-200 hover:bg-zinc-100 dark:hover:bg-zinc-800; }
 
   /* steps strip */
   .howto { @apply flex flex-wrap items-center gap-x-8 gap-y-2 border-y border-zinc-200 py-4 dark:border-zinc-800; }
   .howto-step { @apply flex items-center gap-2.5 text-sm; }
-  .howto-step b { @apply font-medium text-zinc-800 dark:text-zinc-200; }
+  .howto-step b { @apply font-medium text-zinc-700 dark:text-zinc-300; }
   .h-num {
     @apply grid h-6 w-6 flex-none place-items-center rounded-full bg-zinc-900 text-2xs font-semibold tabular-nums text-white
            dark:bg-zinc-100 dark:text-zinc-900;
