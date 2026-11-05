@@ -19,16 +19,16 @@
 
 <!-- ============================================================ top bar -->
 <header class="sticky top-0 z-20 border-b border-zinc-200/80 bg-white/85 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/85">
-  <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6 sm:py-3">
+  <div class="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
     <a href="./" class="-mx-1.5 flex min-w-0 items-center gap-2.5 rounded-lg px-1.5 py-1 transition-all duration-200 hover:bg-zinc-100 dark:hover:bg-zinc-800" aria-label="Chapter Splitter home">
       <span class="grid h-7 w-7 flex-none place-items-center rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" aria-hidden="true">
         <svg viewBox="0 0 16 16" class="h-3.5 w-3.5" fill="currentColor"><path d="M2 2h5v12H2zM9 2h5v5H9zM9 9h5v5H9z"/></svg>
       </span>
       <h1 class="truncate text-[15px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Chapter Splitter</h1>
     </a>
-    <div class="flex flex-none items-center gap-2.5 sm:gap-4">
+    <div class="flex flex-none items-center gap-1.5 sm:gap-3">
       <a href="https://t.me/Mychat9939_bot" target="_blank" rel="noopener" class="bot-pill" title="Translate books with the FAST translate bot on Telegram">
-        <img src="img/bot-logo-badge.webp" width="22" height="22" alt="" />
+        <img src="img/bot-logo-clear-64.png" width="22" height="22" alt="" />
         <span class="hidden sm:inline">Translate</span>
       </a>
       <div class="seg mode-seg" id="uiMode" title="Easy = essentials · Advanced = every option">
@@ -49,9 +49,9 @@
   <div class="hero">
     <div class="max-w-3xl">
       <p class="eyebrow">EPUB · TXT · HTML · Markdown</p>
-      <h2 class="display mb-6 mt-3">Split a novel,<br class="hidden sm:block" /> chapter by chapter.</h2>
-      <p class="lede mb-6">Chapters are found for you. Pick how many go in each file and download.</p>
-      <p class="mb-2 inline-flex items-center gap-1.5 text-[13px] text-zinc-500 dark:text-zinc-400">
+      <h2 class="display mt-3">Split a novel,<br class="hidden sm:block" /> chapter by chapter.</h2>
+      <p class="lede mt-4">Chapters are found for you. Pick how many go in each file and download.</p>
+      <p class="mt-3 inline-flex items-center gap-1.5 text-[13px] text-zinc-500 dark:text-zinc-400">
         <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         Runs in your browser · nothing is uploaded
       </p>
@@ -66,7 +66,7 @@
   </ol>
 
   <!-- ============================================================ STEP 1: upload -->
-  <section id="step-upload" class="card" aria-labelledby="h-upload">
+  <section id="step-upload" class="card card-raised" aria-labelledby="h-upload">
     <div class="card-head">
       <span class="step-num">1</span>
       <h2 id="h-upload" class="card-title">Choose your novel</h2>
@@ -74,10 +74,10 @@
     <div class="card-body">
       <label id="dropzone" class="dropzone" tabindex="0">
         <input id="fileInput" type="file" accept=".epub,.txt,.text,.md,.markdown,.html,.htm,.xhtml" hidden />
-        <span class="dz-icon" aria-hidden="true">
+        <span class="mb-3 grid h-11 w-11 place-items-center rounded-lg border border-zinc-200 bg-white text-zinc-500 shadow-xs dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400" aria-hidden="true">
           <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M20 16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3"/></svg>
         </span>
-        <span class="text-[15px] font-medium text-zinc-800 dark:text-zinc-100">Drop a file here or <span class="underline decoration-zinc-300 underline-offset-4 dark:decoration-zinc-600">browse</span></span>
+        <span class="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Drop a file here or <span class="underline decoration-zinc-300 underline-offset-4 dark:decoration-zinc-600">browse</span></span>
         <span class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">.epub · .txt · .html · .md &nbsp;—&nbsp; up to 300 MB</span>
       </label>
       <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -329,26 +329,22 @@
 
   <!-- ============================================================ translate bot -->
   <section id="translate" class="bot-section" aria-labelledby="h-bot">
-    <div class="bot-head">
-      <a href="https://t.me/Mychat9939_bot" target="_blank" rel="noopener" class="bot-hero-logo" aria-label="Open FAST translate bot on Telegram">
-        <img src="img/bot-logo-badge.webp" width="56" height="56" alt="FAST translate bot" />
-      </a>
-      <div class="min-w-0">
-        <p class="eyebrow">Next step · Telegram</p>
-        <h2 id="h-bot" class="display small mt-1">Translate them in minutes.</h2>
-      </div>
-    </div>
-    <div class="min-w-0">
-      <p class="lede mb-6">Send your files to <b class="font-semibold text-zinc-900 dark:text-zinc-100">FAST translate</b>. Chapters, formatting and images stay exactly as they were.</p>
+    <a href="https://t.me/Mychat9939_bot" target="_blank" rel="noopener" class="bot-hero-logo" aria-label="Open FAST translate bot on Telegram">
+      <img src="img/bot-logo-clear.webp" width="112" height="112" alt="FAST translate bot" />
+    </a>
+    <div class="min-w-0 flex-1">
+      <p class="eyebrow">Next step · Telegram</p>
+      <h2 id="h-bot" class="display small mt-2">Translate them in minutes.</h2>
+      <p class="lede mt-3">Send your files to <b class="font-semibold text-zinc-900 dark:text-zinc-100">FAST translate</b>. Chapters, formatting and images stay exactly as they were.</p>
 
-      <ul class="bot-facts">
+      <ul class="bot-facts mt-5">
         <li><b>EPUB · PDF · DOCX · TXT · HTML</b><span>In and out, same format</span></li>
         <li><b>Hindi + 20 languages</b><span>Bengali, Tamil, Telugu, Marathi, Urdu…</span></li>
         <li><b>Free every day</b><span>1M characters · files up to 2 MB</span></li>
         <li><b>Plans from ₹15</b><span>Bigger files, no daily limit, fast lane</span></li>
       </ul>
 
-      <div class="mt-8 flex flex-wrap items-center gap-2.5">
+      <div class="mt-6 flex flex-wrap items-center gap-2.5">
         <a href="https://t.me/Mychat9939_bot" target="_blank" rel="noopener" class="btn primary big">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.6 18.8 19.3c-.2 1-.9 1.3-1.7.8l-4.8-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.8 8.8-7.9c.4-.3-.1-.5-.6-.2L6.6 13.2 1.9 11.7c-1-.3-1-1 .2-1.5l18.3-7c.9-.3 1.6.2 1.5 1.4z"/></svg>
           Open @Mychat9939_bot
@@ -404,7 +400,7 @@
   <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-6 text-xs text-zinc-500 sm:px-6 dark:text-zinc-400">
     <span class="font-medium text-zinc-700 dark:text-zinc-300">Chapter Splitter</span>
     <a href="https://t.me/Mychat9939_bot" target="_blank" rel="noopener" class="-mx-2 inline-flex items-center gap-2 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100">
-      <img src="img/bot-logo-badge.webp" width="18" height="18" alt="" />
+      <img src="img/bot-logo-clear-64.png" width="18" height="18" alt="" class="rounded-full" />
       FAST translate · @Mychat9939_bot
     </a>
   </div>
