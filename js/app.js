@@ -88,6 +88,20 @@
   }
   const tick = () => new Promise(r => setTimeout(r, 0));
 
+  /* Inline SVG icons (presentation only – stroke icons, inherit currentColor) */
+  const svg = d => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  const ICON = {
+    eye: svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
+    mergeUp: svg('<path d="M12 19V5M5 12l7-7 7 7"/>'),
+    scissors: svg('<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/>'),
+    file: svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>'),
+    download: svg('<path d="M12 4v12M7 11l5 5 5-5"/><path d="M5 20h14"/>'),
+    check: svg('<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>'),
+    alert: svg('<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>'),
+    arrowRight: svg('<path d="M5 12h14M13 6l6 6-6 6"/>'),
+    sliders: svg('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>')
+  };
+
   /* ------------------------------------------------------------------ *
    * Patterns UI
    * ------------------------------------------------------------------ */
@@ -139,17 +153,17 @@
     const mb = (file.size || 0) / 1048576;
     if (UNSUPPORTED.test(file.name || '')) {
       info.classList.remove('hidden');
-      info.innerHTML = '<div class="fi-main"><b>❌ ' + P.escapeHtml(file.name) + '</b><span class="meta err">This file type is not supported. Please choose an .epub, .txt, .html or .md file (convert PDF / MOBI / DOCX to EPUB first, e.g. with Calibre).</span></div>';
+      info.innerHTML = '<div class="fi-main"><b>' + P.escapeHtml(file.name) + '</b><span class="meta err">This file type is not supported. Please choose an .epub, .txt, .html or .md file (convert PDF / MOBI / DOCX to EPUB first, e.g. with Calibre).</span></div>';
       return;
     }
     if (!file.size) {
       info.classList.remove('hidden');
-      info.innerHTML = '<div class="fi-main"><b>❌ ' + P.escapeHtml(file.name) + '</b><span class="meta err">This file is empty.</span></div>';
+      info.innerHTML = '<div class="fi-main"><b>' + P.escapeHtml(file.name) + '</b><span class="meta err">This file is empty.</span></div>';
       return;
     }
     if (mb > MAX_FILE_MB) {
       info.classList.remove('hidden');
-      info.innerHTML = '<div class="fi-main"><b>❌ ' + P.escapeHtml(file.name) + '</b><span class="meta err">File ' + fmtSize(file.size) + ' is too large — browsers can only safely handle files up to ' + MAX_FILE_MB + ' MB.</span></div>';
+      info.innerHTML = '<div class="fi-main"><b>' + P.escapeHtml(file.name) + '</b><span class="meta err">File ' + fmtSize(file.size) + ' is too large — browsers can only safely handle files up to ' + MAX_FILE_MB + ' MB.</span></div>';
       return;
     }
     // cancel anything still running for the previous file
@@ -162,14 +176,14 @@
     state.search = ''; $('#search').value = '';
     if (state.coverUrl) { URL.revokeObjectURL(state.coverUrl); state.coverUrl = null; }
     $('#chapterBody').innerHTML = '';
-    $('#detectBadge').textContent = '⏳ Loading file…';
+    $('#detectBadge').textContent = 'Loading file…';
     $('#detectHints').innerHTML = '';
     $('#planList').innerHTML = '';
     $('#planSummary').textContent = '';
     $('#downloadZip').disabled = true;
     $('#downloadEach').disabled = true;
     info.classList.remove('hidden');
-    info.innerHTML = '<div class="fi-main"><b>⏳ ' + P.escapeHtml(file.name) + '</b><span class="meta">Reading… ' + fmtSize(file.size || 0) +
+    info.innerHTML = '<div class="fi-main"><b>' + P.escapeHtml(file.name) + '</b><span class="meta">Reading… ' + fmtSize(file.size || 0) +
       (mb > WARN_FILE_MB ? ' · large file, this may take a moment' : '') + '</span></div><button class="btn ghost small" id="cancelLoad">Cancel</button>';
     $('#cancelLoad').onclick = () => {
       job.aborted = true;
@@ -202,7 +216,7 @@
       console.error(e);
       if (job.aborted) return;
       const msg = isOom(e) ? 'The browser ran out of memory. Close other tabs and try again.' : (e.message || String(e));
-      info.innerHTML = '<div class="fi-main"><b>❌ ' + P.escapeHtml(file.name) + '</b><span class="meta err">' + P.escapeHtml(msg) + '</span></div>';
+      info.innerHTML = '<div class="fi-main"><b>' + P.escapeHtml(file.name) + '</b><span class="meta err">' + P.escapeHtml(msg) + '</span></div>';
       $('#detectBadge').textContent = '';
       setStepsVisible(false);
       toast('Could not read the file: ' + msg, 5000);
@@ -244,7 +258,7 @@
     const book = state.book;
     const t0 = performance.now();
     const badge = $('#detectBadge');
-    const busy = f => { badge.textContent = '⏳ Detecting chapters… ' + Math.round(f * 100) + '%'; };
+    const busy = f => { badge.textContent = 'Detecting chapters… ' + Math.round(f * 100) + '%'; };
     busy(0);
     document.documentElement.classList.add('busy');
     const textOpts = textOptions();
@@ -275,7 +289,7 @@
       if (e && e.aborted) return;
       console.error(e);
       if (state.job === job) {
-        badge.textContent = '⚠ Error';
+        badge.textContent = 'Error';
         toast(isOom(e) ? 'Out of memory — close other tabs and try again.' : 'Error while detecting chapters: ' + (e.message || e), 5000);
       }
       return;
@@ -311,16 +325,16 @@
    * ------------------------------------------------------------------ */
   const setEpubMode = v => setSeg('#epubMode', v, m => { state.epubMode = m; detect(); });
   const FIXES = {
-    numbered: { label: '🔢 Numbered headings (1. / 002)', run: () => setPattern('numbered', true) },
+    numbered: { label: 'Numbered headings (1. / 002)', run: () => setPattern('numbered', true) },
     markdown: { label: '# Markdown headings', run: () => setPattern('markdown', true) },
     part: { label: 'Part / Volume headings', run: () => setPattern('part', true) },
-    spine: { label: '📄 Each HTML file = 1 chapter', run: () => setEpubMode('spine') },
-    toc: { label: '📑 Use the table of contents', run: () => setEpubMode('toc') },
-    text: { label: '🔤 Detect from heading text', run: () => setEpubMode('text') },
-    mergeShort: { label: '🧹 Auto-merge short chapters', run: () => { const r = $('#minChars'); r.value = Math.min(3000, (parseInt(r.value, 10) || 0) + 600); $('#minCharsOut').textContent = r.value; detect(); } },
+    spine: { label: 'Each HTML file = 1 chapter', run: () => setEpubMode('spine') },
+    toc: { label: 'Use the table of contents', run: () => setEpubMode('toc') },
+    text: { label: 'Detect from heading text', run: () => setEpubMode('text') },
+    mergeShort: { label: 'Auto-merge short chapters', run: () => { const r = $('#minChars'); r.value = Math.min(3000, (parseInt(r.value, 10) || 0) + 600); $('#minCharsOut').textContent = r.value; detect(); } },
     blank: { label: 'Only headings after a blank line', run: () => { $('#blankBefore').checked = true; detect(); } },
-    advanced: { label: '⚙️ Show all settings', run: () => { setUiMode('advanced'); const d = $('#detectDetails'); d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
-    goSplit: { label: '✅ Looks good → Go to download', primary: true, run: () => $('#step-split').scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+    advanced: { label: 'Show all settings', run: () => { setUiMode('advanced'); const d = $('#detectDetails'); d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
+    goSplit: { label: 'Continue to download', primary: true, run: () => $('#step-split').scrollIntoView({ behavior: 'smooth', block: 'start' }) }
   };
   function setPattern(k, on) {
     const el = $('#patternList input[value="' + k + '"]');
@@ -342,23 +356,23 @@
       if (textMode) ['numbered', 'markdown', 'part'].forEach(k => { if (!sel.includes(k) && (patternCounts[k] || 0) >= 2) f.push(k); });
       if (isEpub) { if (state.epubMode !== 'spine') f.push('spine'); if (state.epubMode !== 'text') f.push('text'); }
       f.push('advanced');
-      add('warn', '😕', 'No chapters found.', 'No worries — try one of the buttons below. If nothing works, the whole book will be exported as a single file.', f);
+      add('warn', ICON.alert, 'No chapters found.', 'No worries — try one of the buttons below. If nothing works, the whole book will be exported as a single file.', f);
     } else {
       const avg = ch.reduce((a, c) => a + c.words, 0) / ch.length;
       const shortN = ch.filter(c => c.words < avg * 0.15).length;
       const tiny = ch.length >= 3 && shortN / ch.length > 0.2;
       const few = ch.length <= 2 && textMode && ['numbered', 'markdown'].some(k => !sel.includes(k) && (patternCounts[k] || 0) >= 5);
       if (tiny) {
-        add('warn', '🤔', fmtNum(ch.length) + ' chapters found, but ' + shortN + ' are very short.', 'A table of contents or false headings may have been detected as chapters. Try:', [
+        add('warn', ICON.alert, fmtNum(ch.length) + ' chapters found, but ' + shortN + ' are very short.', 'A table of contents or false headings may have been detected as chapters. Try:', [
           'mergeShort', isEpub && state.epubMode !== 'toc' && state.book.toc.length ? 'toc' : null, isEpub && state.epubMode !== 'text' ? 'text' : null, textMode && !$('#blankBefore').checked ? 'blank' : null, 'advanced']);
       } else if (few) {
-        add('warn', '🤔', 'Only ' + ch.length + ' chapter' + (ch.length > 1 ? 's' : '') + ' found.', 'This file seems to use a different heading style. Try:', ['numbered', 'markdown', 'advanced']);
+        add('warn', ICON.alert, 'Only ' + ch.length + ' chapter' + (ch.length > 1 ? 's' : '') + ' found.', 'This file seems to use a different heading style. Try:', ['numbered', 'markdown', 'advanced']);
       } else {
-        add('ok', '🎉', fmtNum(ch.length) + ' chapters found!', 'Have a quick look at the list below and untick any chapters you don\'t need. If everything looks right, go straight to download.', ['goSplit', 'advanced']);
+        add('ok', ICON.check, fmtNum(ch.length) + ' chapters found!', 'Have a quick look at the list below and untick any chapters you don\'t need. If everything looks right, go straight to download.', ['goSplit', 'advanced']);
       }
     }
     box.innerHTML = cards.map(c => '<div class="hint-card ' + c.cls + '"><span class="hi">' + c.icon + '</span><div class="ht"><b>' + P.escapeHtml(c.title) + '</b><small>' + P.escapeHtml(c.sub) + '</small></div>' +
-      '<div class="fixes">' + c.fixes.map(k => '<button class="btn small ' + (FIXES[k].primary ? 'primary' : 'ghost') + '" data-fix="' + k + '">' + FIXES[k].label + '</button>').join('') + '</div></div>').join('');
+      '<div class="fixes">' + c.fixes.map(k => '<button class="btn small ' + (FIXES[k].primary ? 'primary' : 'ghost') + '" data-fix="' + k + '">' + (k === 'advanced' ? ICON.sliders : '') + FIXES[k].label + (FIXES[k].primary ? ICON.arrowRight : '') + '</button>').join('') + '</div></div>').join('');
   }
 
   /* Easy / Advanced UI mode */
@@ -402,13 +416,13 @@
         '<td class="c-no">' + (pos + 1) + '</td>' +
         '<td><span class="c-title' + (c.edited ? ' edited' : '') + '" contenteditable="plaintext-only" spellcheck="false">' + P.escapeHtml(c.title) + '</span></td>' +
         '<td class="c-words" title="' + (short ? 'Very short chapter – possibly a false detection' : '') + '">' + fmtNum(c.words) + '</td>' +
-        '<td class="c-act"><button class="row-btn" data-act="preview" title="Preview">👁</button>' +
-        (pos > 0 ? '<button class="row-btn" data-act="merge" title="Merge into previous chapter">⤒</button>' : '') +
-        '<button class="row-btn" data-act="split" title="Split this chapter in two (choose where in the preview)">✂</button></td></tr>';
+        '<td class="c-act"><button class="row-btn" data-act="preview" title="Preview" aria-label="Preview">' + ICON.eye + '</button>' +
+        (pos > 0 ? '<button class="row-btn" data-act="merge" title="Merge into previous chapter" aria-label="Merge into previous chapter">' + ICON.mergeUp + '</button>' : '') +
+        '<button class="row-btn" data-act="split" title="Split this chapter in two (choose where in the preview)" aria-label="Split this chapter">' + ICON.scissors + '</button></td></tr>';
     });
     body.innerHTML = rows.join('');
     const empty = $('#emptyChapters');
-    empty.textContent = state.chapters.length ? 'No chapters match “' + state.search.trim() + '”.' : 'No chapters found 😕 — try one of the suggestion buttons above.';
+    empty.textContent = state.chapters.length ? 'No chapters match “' + state.search.trim() + '”.' : 'No chapters found — try one of the suggestions above.';
     empty.classList.toggle('hidden', list.length > 0);
     $('#moreRow').classList.toggle('hidden', list.length <= state.shown);
     $('#showMore').textContent = 'Show more (' + fmtNum(list.length - state.shown) + ' remaining)';
@@ -416,7 +430,7 @@
     const fr = $('#frontRow');
     if (state.front && state.front.text && state.front.text.trim()) {
       fr.classList.remove('hidden');
-      fr.innerHTML = '<span>📄 Front matter (text before the first chapter): <b>' + fmtNum(P.countWords(state.front.text)) + '</b> words</span><button class="btn ghost small" id="previewFront">Preview</button>';
+      fr.innerHTML = '<span>' + ICON.file + 'Front matter (text before the first chapter): <b>' + fmtNum(P.countWords(state.front.text)) + '</b> words</span><button class="btn ghost small" id="previewFront">Preview</button>';
       $('#previewFront').onclick = () => openPreview(-1);
     } else fr.classList.add('hidden');
   }
@@ -544,7 +558,7 @@
     const items = plan.slice(0, PLAN_PREVIEW).map(f => {
       let words = 0;
       for (let k = f.a; k <= f.b; k++) words += selected[k].words;
-      return '<li><span class="pn" title="' + P.escapeHtml(f.name) + '">📄 ' + P.escapeHtml(f.name) + '</span><span class="pc">' + f.count + ' ch · ' + fmtNum(words) + ' w <button data-g="' + f.g + '" title="Download only this file" aria-label="Download ' + P.escapeHtml(f.name) + '">⬇</button></span></li>';
+      return '<li><span class="pn" title="' + P.escapeHtml(f.name) + '">' + ICON.file + '<span class="truncate">' + P.escapeHtml(f.name) + '</span></span><span class="pc">' + f.count + ' ch · ' + fmtNum(words) + ' w <button data-g="' + f.g + '" title="Download only this file" aria-label="Download ' + P.escapeHtml(f.name) + '">' + ICON.download + '</button></span></li>';
     });
     if (groups.length > PLAN_PREVIEW) items.push('<li><span class="pc">… and ' + fmtNum(groups.length - PLAN_PREVIEW) + ' more files</span></li>');
     list.innerHTML = items.join('');
@@ -595,8 +609,8 @@
       const folder = $('#optFolder').checked ? r.o.book + ' (' + r.o.format.toUpperCase() + ')' : '';
       const blob = await X.zipFiles(JSZip, r.files, folder, f => progress(0.7 + f * 0.3, 'Packing ZIP… ' + Math.round(f * 100) + '%'));
       saveBlob(blob, P.sanitizeFilename(r.o.book + ' - split ' + r.o.format.toUpperCase()) + '.zip');
-      progress(1, '✅ ' + r.files.length + ' files · ' + fmtSize(blob.size) + ' — download started');
-      toast('✅ ZIP ready: ' + r.files.length + ' files');
+      progress(1, r.files.length + ' files · ' + fmtSize(blob.size) + ' — download started');
+      toast('ZIP ready: ' + r.files.length + ' files');
       saveSettings();
     } catch (e) {
       console.error(e); progress(null);
@@ -618,7 +632,7 @@
         progress((i + 1) / r.files.length, 'Downloading ' + (i + 1) + ' / ' + r.files.length);
         await new Promise(res => setTimeout(res, 350));
       }
-      progress(1, '✅ ' + r.files.length + ' file' + (r.files.length === 1 ? '' : 's') + ' downloaded');
+      progress(1, r.files.length + ' file' + (r.files.length === 1 ? '' : 's') + ' downloaded');
     } catch (e) {
       console.error(e); progress(null);
       toast(isOom(e) ? 'Out of memory — close other tabs and try again.' : 'Error: ' + (e.message || e), 5000);
@@ -635,7 +649,7 @@
     try {
       const files = await X.buildFiles(JSZip, selected, groups, o);
       const f = files[0];
-      if (f) { saveBlob(new Blob([f.data], { type: f.mime }), f.name); toast('⬇ ' + f.name); }
+      if (f) { saveBlob(new Blob([f.data], { type: f.mime }), f.name); toast('Downloaded ' + f.name); }
     } catch (e) { console.error(e); toast('Error: ' + (e.message || e), 4000); }
   }
 
@@ -644,10 +658,10 @@
    * ------------------------------------------------------------------ */
   function init() {
     // last line of defence: never leave the user with a silently broken page
-    window.addEventListener('error', e => { if (e && e.message && !/ResizeObserver/.test(e.message)) toast('⚠ ' + e.message, 5000); });
+    window.addEventListener('error', e => { if (e && e.message && !/ResizeObserver/.test(e.message)) toast(e.message, 5000); });
     window.addEventListener('unhandledrejection', e => {
       const r = e && e.reason; if (r && r.aborted) { e.preventDefault(); return; }
-      toast('⚠ ' + (isOom(r) ? 'Out of memory — close other tabs and try again.' : (r && r.message) || r), 5000);
+      toast((isOom(r) ? 'Out of memory — close other tabs and try again.' : (r && r.message) || r), 5000);
     });
     const saved = loadSettings();
     renderPatterns(saved);
