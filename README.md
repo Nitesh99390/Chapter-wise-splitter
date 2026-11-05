@@ -41,9 +41,9 @@ Three steps, no technical settings:
 **Chapter editor**
 - Search, select / deselect, or select a range. While searching, the bulk select buttons only affect matching chapters.
 - Click a title to rename it.
-- ⤒ merges a chapter into the previous one.
-- ✂ splits a chapter in two at any paragraph.
-- 👁 opens a preview (◀ ▶ keys for previous / next chapter).
+- The **up-arrow** icon merges a chapter into the previous one.
+- The **scissors** icon splits a chapter in two at any paragraph.
+- The **eye** icon opens a preview (← → keys for previous / next chapter).
 
 **Split options**
 - **Chapters per file** (1, 5, 10, 20, 50, 100… or any number)
@@ -53,11 +53,24 @@ Three steps, no technical settings:
 **Output:** TXT, EPUB 3 (with NCX, keeps the original cover), HTML (reader styling + TOC), Markdown
 - File name template: `{book} {range} {start} {end} {part} {total} {first} {count}`
 - The output preview shows exactly the file names that will be downloaded. Download files one by one or as a single ZIP.
-- Dark mode, and settings are remembered. Shortcut: <kbd>Ctrl</kbd>+<kbd>Enter</kbd> downloads the ZIP.
+- Light and dark themes; settings are remembered. Shortcut: <kbd>Ctrl</kbd>+<kbd>Enter</kbd> downloads the ZIP.
+
+## 🎨 Design
+
+The interface is built with **Tailwind CSS** on a monochrome zinc palette, set in **Inter** (self-hosted, so it also works offline). Borders are thin, shadows are kept soft, and spacing is generous. There are no gradients or decorative effects. The interface uses inline SVG icons instead of emoji.
+
+- `src/input.css` is the Tailwind source. It holds component classes for the markup that `js/app.js` renders.
+- `css/style.css` is the compiled, minified output. It is committed, so the site still runs with **no build step**.
+- After editing `index.html`, `src/input.css` or the class names in `js/app.js`, rebuild the stylesheet:
+
+```bash
+npm install          # tailwindcss (dev only)
+npm run build:css    # or: npm run watch:css
+```
 
 ## 🚀 Running it
 
-It's a static site with no build step:
+It's a static site, so you can serve it directly:
 
 ```bash
 npm start            # = python3 -m http.server 8080
@@ -84,7 +97,10 @@ You can also open `tests/selftest.html` in a browser to run the unit tests.
 
 ```
 index.html          UI
-css/style.css       Styling (light + dark)
+src/input.css       Tailwind source (components + theme)
+css/style.css       Compiled Tailwind stylesheet (light + dark)
+tailwind.config.js  Tailwind config (zinc palette, Inter, dark mode via data-theme)
+fonts/              Inter variable font (OFL-1.1)
 js/parser.js        Heading detection, number parsing, grouping (DOM-free, also runs in Node)
 js/reader.js        EPUB / TXT / HTML readers, TOC slicing
 js/exporter.js      TXT / MD / HTML / EPUB writers, file naming + ZIP
