@@ -63,6 +63,8 @@ The site links to the **FAST translate** bot — [@Mychat9939_bot](https://t.me/
 
 The interface is built with **Tailwind CSS** on a monochrome zinc palette. Everything, including the headlines, is set in **Inter** (self-hosted in `fonts/`, so the page works offline); headlines are bold, uniform and tightly tracked. In dark mode the upload card sits on a lighter `zinc-800` surface with a `zinc-700` border so the dropzone stands out. Copy is kept short — one line per label, no explanatory paragraphs outside the FAQ. Borders are thin, shadows are kept soft, and spacing is generous. There are no gradients or decorative effects. The interface uses inline SVG icons instead of emoji.
 
+**Micro-polish:** every button, chip, list row, FAQ item and the dropzone fades its background in over `duration-200` on hover (`hover:bg-zinc-800` in dark mode). Keyboard focus shows one soft `ring-2 ring-zinc-600`, and inputs use the same ring on focus. Headings are `zinc-100` in dark mode, while descriptions and table rows use `zinc-300`/`zinc-400` for less glare. Corners nest consistently: cards are `rounded-xl`, everything inside them is `rounded-lg`, and pieces one level deeper are `rounded-md`. Dark cards get a hairline `zinc-800` border and a 1px inset highlight for subtle depth.
+
 - `src/input.css` is the Tailwind source. It holds component classes for the markup that `js/app.js` renders.
 - `css/style.css` is the compiled, minified output. It is committed, so the site still runs with **no build step**.
 - After editing `index.html`, `src/input.css` or the class names in `js/app.js`, rebuild the stylesheet:
