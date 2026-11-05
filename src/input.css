@@ -38,7 +38,7 @@
   input[type='text'], input[type='search'], input[type='number'], input:not([type]), select {
     @apply rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-xs
            placeholder:text-zinc-400 transition-all duration-200
-           hover:border-zinc-400 focus:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-600/30
+           hover:border-zinc-400 focus:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-600
            dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500
            dark:hover:border-zinc-600 dark:focus:border-zinc-600 dark:focus:ring-zinc-600;
   }
@@ -46,13 +46,14 @@
   input[type='checkbox'] { @apply h-4 w-4 cursor-pointer rounded accent-zinc-900 dark:accent-zinc-200; }
   input[type='range'] { @apply w-full cursor-pointer rounded-full accent-zinc-900 dark:accent-zinc-200; }
   /* one elegant focus ring for every interactive element (keyboard focus only, so mouse clicks stay clean) */
+  button, a, summary, [tabindex], input[type='checkbox'], input[type='range'] { @apply focus:outline-none; }
   button:focus-visible, a:focus-visible, summary:focus-visible, label:focus-visible, [tabindex]:focus-visible,
   input[type='checkbox']:focus-visible, input[type='range']:focus-visible {
     @apply outline-none ring-2 ring-zinc-600 ring-offset-2 ring-offset-white dark:ring-offset-zinc-950;
   }
-  a, summary { @apply transition-all duration-200; }
+  button, a, summary, label, select { @apply transition-all duration-200; }
   code, kbd {
-    @apply rounded border border-zinc-200 bg-zinc-100 px-1.5 py-px font-mono text-[0.8em] text-zinc-700
+    @apply rounded-md border border-zinc-200 bg-zinc-100 px-1.5 py-px font-mono text-[0.8em] text-zinc-700
            dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300;
   }
   summary { @apply cursor-pointer list-none; }
@@ -76,20 +77,15 @@
   }
   .eyebrow { @apply text-2xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400; }
   .card-title { @apply text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100; }
-  /* raised card (upload step): lighter surface + visible border so it reads as a dropzone in dark mode */
-  .card-raised { @apply dark:border-zinc-700 dark:bg-zinc-800 dark:shadow-[inset_0_1px_0_0_rgb(255_255_255/0.05),0_1px_2px_0_rgb(0_0_0/0.4)]; }
-  .card-raised .card-head { @apply dark:border-zinc-700; }
-  .card-raised .dropzone { @apply dark:border-zinc-600 dark:bg-zinc-900/60 dark:hover:border-zinc-500 dark:hover:bg-zinc-700/40; }
-  .card-raised .file-info { @apply dark:border-zinc-700 dark:bg-zinc-900/60; }
 
   /* typography: headline + lede */
   /* one uniform, bold Inter headline — no serif / italic mix */
   .display {
-    @apply font-sans text-[40px] font-bold not-italic leading-[1.05] tracking-[-0.035em] text-zinc-950 sm:text-[64px] dark:text-zinc-100;
+    @apply font-sans text-[38px] font-bold not-italic leading-tight tracking-[-0.035em] text-zinc-950 sm:text-[60px] dark:text-zinc-100;
     text-wrap: balance;
   }
-  .display.small { @apply text-[32px] tracking-[-0.03em] sm:text-[44px]; }
-  .lede { @apply max-w-xl text-[16px] leading-7 text-zinc-600 sm:text-[17px] dark:text-zinc-400; }
+  .display.small { @apply text-[28px] tracking-[-0.03em] sm:text-[40px]; }
+  .lede { @apply max-w-xl text-[16px] leading-7 text-zinc-600 sm:text-[17px] dark:text-zinc-300; }
 
   /* Telegram bot promo */
   .bot-pill {
@@ -99,12 +95,13 @@
   }
   .bot-pill img { @apply h-[22px] w-[22px] rounded-full; }
   .bot-section {
-    @apply mt-6 flex flex-col gap-6 rounded-2xl border border-zinc-200 bg-white px-6 py-8 shadow-card sm:flex-row sm:items-start sm:gap-8 sm:px-8 sm:py-10
+    @apply mt-6 rounded-xl border border-zinc-200 bg-white px-5 py-8 shadow-card sm:px-8 sm:py-10
            dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[inset_0_1px_0_0_rgb(255_255_255/0.04),0_1px_2px_0_rgb(0_0_0/0.4)];
   }
-  .bot-hero-logo { @apply flex-none self-start rounded-full transition-all duration-200 hover:scale-[1.03]; }
-  /* transparent cut-out logo: no white disc, ring or box shadow — a soft drop-shadow follows the badge outline */
-  .bot-hero-logo img { @apply h-24 w-24 border-0 bg-transparent sm:h-28 sm:w-28; filter: drop-shadow(0 6px 14px rgb(0 0 0 / 0.18)); }
+  .bot-head { @apply mb-6 flex items-center gap-4; }
+  /* transparent badge: no white disc, border, ring, shadow or glow — sized to sit level with the eyebrow + heading */
+  .bot-hero-logo { @apply flex-none rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90; }
+  .bot-hero-logo img { @apply block h-12 w-12 border-0 bg-transparent p-0 shadow-none ring-0 sm:h-14 sm:w-14; }
   .bot-facts { @apply grid list-none gap-x-8 gap-y-4 p-0 sm:grid-cols-2; }
   .bot-facts li { @apply border-l-2 border-zinc-200 pl-3.5 dark:border-zinc-700; }
   .bot-facts b { @apply block text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100; }
@@ -123,7 +120,7 @@
            dark:active:bg-zinc-700 dark:disabled:hover:bg-zinc-900;
   }
   .btn svg { @apply h-4 w-4 flex-none; }
-  .btn.small { @apply gap-1.5 rounded-md px-2.5 py-1.5 text-[13px]; }
+  .btn.small { @apply gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px]; }
   .btn.small svg { @apply h-3.5 w-3.5; }
   .btn.ghost { @apply border-transparent bg-transparent text-zinc-600 shadow-none hover:border-transparent hover:bg-zinc-100 dark:bg-transparent dark:text-zinc-300 dark:hover:border-transparent dark:hover:bg-zinc-800; }
   .btn.ghost.outline { @apply border-zinc-300 dark:border-zinc-700; }
@@ -135,7 +132,7 @@
   }
   .btn.big { @apply h-11 px-5 text-[15px]; }
   .icon-btn {
-    @apply inline-grid h-8 w-8 place-items-center rounded-md text-zinc-500 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-900 active:scale-95
+    @apply inline-grid h-8 w-8 place-items-center rounded-lg text-zinc-500 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-900 active:scale-95
            disabled:pointer-events-none disabled:opacity-30 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100;
   }
   .icon-btn svg { @apply h-4 w-4; }
@@ -153,7 +150,7 @@
   /* chips (presets / tokens) */
   .presets, .tokens { @apply flex flex-wrap gap-1.5; }
   .presets button, .tokens button {
-    @apply h-7 min-w-[2.25rem] rounded-md border border-zinc-200 bg-white px-2.5 text-[13px] tabular-nums text-zinc-600 transition-all duration-200
+    @apply h-7 min-w-[2.25rem] rounded-lg border border-zinc-200 bg-white px-2.5 text-[13px] tabular-nums text-zinc-600 transition-all duration-200
            hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900 active:scale-95 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400
            dark:hover:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-100;
   }
@@ -202,7 +199,7 @@
   label.check small { @apply text-zinc-500; }
   .hint { @apply mt-1.5 block text-xs font-normal leading-5; }
   .err {
-    @apply mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700
+    @apply mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700
            dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300;
   }
   span.err { @apply mt-1 block border-0 bg-transparent p-0 dark:bg-transparent; }
@@ -218,18 +215,24 @@
 
   /* dropzone (JS toggles .drag) */
   .dropzone {
-    @apply flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-zinc-300 bg-zinc-50/60
-           px-6 py-12 text-center transition-all duration-200 hover:border-zinc-400 hover:bg-zinc-100/70
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2
-           dark:border-zinc-700 dark:bg-zinc-950/40 dark:hover:border-zinc-500 dark:hover:bg-zinc-800 dark:focus-visible:ring-offset-zinc-800;
+    @apply flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-zinc-200 bg-zinc-50
+           px-6 py-12 text-center transition-all duration-200 hover:border-zinc-300 hover:bg-zinc-100
+           focus:outline-none focus:ring-2 focus:ring-zinc-600 focus:ring-offset-2 focus:ring-offset-white
+           dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:border-zinc-700 dark:hover:bg-zinc-800 dark:focus:ring-offset-zinc-900;
   }
-  .dropzone > span:first-of-type { @apply transition-all duration-200; }
-  .dropzone:hover > span:first-of-type { @apply -translate-y-0.5 text-zinc-700 dark:text-zinc-200; }
-  .dropzone.drag { @apply border-solid border-zinc-900 bg-zinc-100 dark:border-zinc-200 dark:bg-zinc-800/60; }
+  .dz-icon {
+    @apply mb-3 grid h-11 w-11 place-items-center rounded-md border border-zinc-200 bg-white text-zinc-500 shadow-xs transition-all duration-200
+           dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400;
+  }
+  /* upload icon lifts 2px on hover */
+  .dropzone:hover .dz-icon, .dropzone:focus-visible .dz-icon { @apply -translate-y-0.5 border-zinc-300 text-zinc-800 dark:border-zinc-600 dark:text-zinc-100; }
+  /* strong highlight only while a file is dragged over (JS toggles .drag) */
+  .dropzone.drag { @apply border-zinc-900 bg-zinc-100 ring-2 ring-zinc-900/10 dark:border-zinc-400 dark:bg-zinc-950 dark:ring-zinc-600; }
+  .dropzone.drag .dz-icon { @apply -translate-y-0.5 border-zinc-900 bg-zinc-900 text-white dark:border-zinc-200 dark:bg-zinc-100 dark:text-zinc-900; }
 
   /* file info (markup rendered by app.js) */
   .file-info {
-    @apply mt-4 flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/40;
+    @apply mt-4 flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/50;
   }
   .file-info img { @apply h-16 w-11 rounded-md object-cover shadow-xs ring-1 ring-zinc-900/10 dark:ring-white/10; }
   .file-info .fi-main { @apply min-w-[200px] flex-1; }
@@ -257,6 +260,7 @@
   .hint-card .ht b { @apply font-semibold text-zinc-900 dark:text-zinc-100; }
   .hint-card .ht small { @apply mt-0.5 block text-[13px] leading-5 text-zinc-600 dark:text-zinc-400; }
   .hint-card .fixes { @apply flex w-full flex-wrap gap-2 pl-[30px]; }
+  .hint-card .fixes .btn { @apply rounded-md; }
   .hint-card .fixes .btn.ghost {
     @apply border-zinc-300 bg-white text-zinc-800 shadow-xs hover:border-zinc-400 hover:bg-zinc-50
            dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800;
@@ -289,8 +293,8 @@
   }
   .row-btn svg { @apply h-[15px] w-[15px]; }
   .front-row {
-    @apply mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-zinc-300 px-3.5 py-2 text-[13px]
-           text-zinc-600 dark:border-zinc-700 dark:text-zinc-400;
+    @apply mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-zinc-50/60 px-3.5 py-2 text-[13px]
+           text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400;
   }
   .front-row > span { @apply inline-flex items-center gap-2; }
   .front-row svg { @apply h-4 w-4 text-zinc-400; }
