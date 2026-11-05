@@ -57,11 +57,11 @@ Three steps, no technical settings:
 
 ## 🤖 FAST translate (Telegram bot)
 
-The site links to the **FAST translate** bot — [@Mychat9939_bot](https://t.me/Mychat9939_bot) — as the natural next step after splitting: send the chapter files to the bot and get them back translated (Hindi + 20 languages) with chapters, formatting and images preserved. The bot logo (`img/bot-logo.*`) appears in the header pill, the hero card, the "Translate them" section and the footer; every instance opens the bot directly. Support channel: [t.me/fasttranslte](https://t.me/fasttranslte).
+The site links to the **FAST translate** bot — [@Mychat9939_bot](https://t.me/Mychat9939_bot) — as the natural next step after splitting: send the chapter files to the bot and get them back translated (Hindi + 20 languages) with chapters, formatting and images preserved. The bot logo (a transparent cut-out, `img/bot-logo-clear.*`, so it sits cleanly on light and dark surfaces) appears in the header pill, the "Translate them" section and the footer; every instance opens the bot directly. Support channel: [t.me/fasttranslte](https://t.me/fasttranslte).
 
 ## 🎨 Design
 
-The interface is built with **Tailwind CSS** on a monochrome zinc palette. Body text is set in **Inter**; the two headlines use **Instrument Serif** for contrast (both self-hosted in `fonts/`, so the page works offline). Copy is kept short — one line per label, no explanatory paragraphs outside the FAQ. Borders are thin, shadows are kept soft, and spacing is generous. There are no gradients or decorative effects. The interface uses inline SVG icons instead of emoji.
+The interface is built with **Tailwind CSS** on a monochrome zinc palette. Everything, including the headlines, is set in **Inter** (self-hosted in `fonts/`, so the page works offline); headlines are bold, uniform and tightly tracked. In dark mode the upload card sits on a lighter `zinc-800` surface with a `zinc-700` border so the dropzone stands out. Copy is kept short — one line per label, no explanatory paragraphs outside the FAQ. Borders are thin, shadows are kept soft, and spacing is generous. There are no gradients or decorative effects. The interface uses inline SVG icons instead of emoji.
 
 - `src/input.css` is the Tailwind source. It holds component classes for the markup that `js/app.js` renders.
 - `css/style.css` is the compiled, minified output. It is committed, so the site still runs with **no build step**.
