@@ -333,8 +333,8 @@
     text: { label: 'Detect from heading text', run: () => setEpubMode('text') },
     mergeShort: { label: 'Auto-merge short chapters', run: () => { const r = $('#minChars'); r.value = Math.min(3000, (parseInt(r.value, 10) || 0) + 600); $('#minCharsOut').textContent = r.value; detect(); } },
     blank: { label: 'Only headings after a blank line', run: () => { $('#blankBefore').checked = true; detect(); } },
-    advanced: { label: 'Show all settings', run: () => { setUiMode('advanced'); const d = $('#detectDetails'); d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
-    goSplit: { label: 'Continue to download', primary: true, run: () => $('#step-split').scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+    advanced: { label: 'All settings', run: () => { setUiMode('advanced'); const d = $('#detectDetails'); d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
+    goSplit: { label: 'Download', primary: true, run: () => $('#step-split').scrollIntoView({ behavior: 'smooth', block: 'start' }) }
   };
   function setPattern(k, on) {
     const el = $('#patternList input[value="' + k + '"]');
@@ -356,19 +356,19 @@
       if (textMode) ['numbered', 'markdown', 'part'].forEach(k => { if (!sel.includes(k) && (patternCounts[k] || 0) >= 2) f.push(k); });
       if (isEpub) { if (state.epubMode !== 'spine') f.push('spine'); if (state.epubMode !== 'text') f.push('text'); }
       f.push('advanced');
-      add('warn', ICON.alert, 'No chapters found.', 'No worries — try one of the buttons below. If nothing works, the whole book will be exported as a single file.', f);
+      add('warn', ICON.alert, 'No chapters found.', 'Try one of these. Otherwise the whole book becomes one file.', f);
     } else {
       const avg = ch.reduce((a, c) => a + c.words, 0) / ch.length;
       const shortN = ch.filter(c => c.words < avg * 0.15).length;
       const tiny = ch.length >= 3 && shortN / ch.length > 0.2;
       const few = ch.length <= 2 && textMode && ['numbered', 'markdown'].some(k => !sel.includes(k) && (patternCounts[k] || 0) >= 5);
       if (tiny) {
-        add('warn', ICON.alert, fmtNum(ch.length) + ' chapters found, but ' + shortN + ' are very short.', 'A table of contents or false headings may have been detected as chapters. Try:', [
+        add('warn', ICON.alert, fmtNum(ch.length) + ' chapters found, ' + shortN + ' look too short.', 'Probably a contents list was picked up. Try:', [
           'mergeShort', isEpub && state.epubMode !== 'toc' && state.book.toc.length ? 'toc' : null, isEpub && state.epubMode !== 'text' ? 'text' : null, textMode && !$('#blankBefore').checked ? 'blank' : null, 'advanced']);
       } else if (few) {
-        add('warn', ICON.alert, 'Only ' + ch.length + ' chapter' + (ch.length > 1 ? 's' : '') + ' found.', 'This file seems to use a different heading style. Try:', ['numbered', 'markdown', 'advanced']);
+        add('warn', ICON.alert, 'Only ' + ch.length + ' chapter' + (ch.length > 1 ? 's' : '') + ' found.', 'This book may use a different heading style. Try:', ['numbered', 'markdown', 'advanced']);
       } else {
-        add('ok', ICON.check, fmtNum(ch.length) + ' chapters found!', 'Have a quick look at the list below and untick any chapters you don\'t need. If everything looks right, go straight to download.', ['goSplit', 'advanced']);
+        add('ok', ICON.check, fmtNum(ch.length) + ' chapters found.', 'Untick any you don\'t need, then download.', ['goSplit', 'advanced']);
       }
     }
     box.innerHTML = cards.map(c => '<div class="hint-card ' + c.cls + '"><span class="hi">' + c.icon + '</span><div class="ht"><b>' + P.escapeHtml(c.title) + '</b><small>' + P.escapeHtml(c.sub) + '</small></div>' +
@@ -422,7 +422,7 @@
     });
     body.innerHTML = rows.join('');
     const empty = $('#emptyChapters');
-    empty.textContent = state.chapters.length ? 'No chapters match “' + state.search.trim() + '”.' : 'No chapters found — try one of the suggestions above.';
+    empty.textContent = state.chapters.length ? 'No chapters match “' + state.search.trim() + '”.' : 'No chapters found — try a suggestion above.';
     empty.classList.toggle('hidden', list.length > 0);
     $('#moreRow').classList.toggle('hidden', list.length <= state.shown);
     $('#showMore').textContent = 'Show more (' + fmtNum(list.length - state.shown) + ' remaining)';
@@ -430,7 +430,7 @@
     const fr = $('#frontRow');
     if (state.front && state.front.text && state.front.text.trim()) {
       fr.classList.remove('hidden');
-      fr.innerHTML = '<span>' + ICON.file + 'Front matter (text before the first chapter): <b>' + fmtNum(P.countWords(state.front.text)) + '</b> words</span><button class="btn ghost small" id="previewFront">Preview</button>';
+      fr.innerHTML = '<span>' + ICON.file + 'Front matter (before chapter 1): <b>' + fmtNum(P.countWords(state.front.text)) + '</b> words</span><button class="btn ghost small" id="previewFront">Preview</button>';
       $('#previewFront').onclick = () => openPreview(-1);
     } else fr.classList.add('hidden');
   }

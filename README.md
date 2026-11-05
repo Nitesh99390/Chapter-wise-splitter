@@ -55,9 +55,13 @@ Three steps, no technical settings:
 - The output preview shows exactly the file names that will be downloaded. Download files one by one or as a single ZIP.
 - Light and dark themes; settings are remembered. Shortcut: <kbd>Ctrl</kbd>+<kbd>Enter</kbd> downloads the ZIP.
 
+## 🤖 FAST translate (Telegram bot)
+
+The site links to the **FAST translate** bot — [@Mychat9939_bot](https://t.me/Mychat9939_bot) — as the natural next step after splitting: send the chapter files to the bot and get them back translated (Hindi + 20 languages) with chapters, formatting and images preserved. The bot logo (`img/bot-logo.*`) appears in the header pill, the hero card, the "Translate them" section and the footer; every instance opens the bot directly. Support channel: [t.me/fasttranslte](https://t.me/fasttranslte).
+
 ## 🎨 Design
 
-The interface is built with **Tailwind CSS** on a monochrome zinc palette, set in **Inter** (self-hosted, so it also works offline). Borders are thin, shadows are kept soft, and spacing is generous. There are no gradients or decorative effects. The interface uses inline SVG icons instead of emoji.
+The interface is built with **Tailwind CSS** on a monochrome zinc palette. Body text is set in **Inter**; the two headlines use **Instrument Serif** for contrast (both self-hosted in `fonts/`, so the page works offline). Copy is kept short — one line per label, no explanatory paragraphs outside the FAQ. Borders are thin, shadows are kept soft, and spacing is generous. There are no gradients or decorative effects. The interface uses inline SVG icons instead of emoji.
 
 - `src/input.css` is the Tailwind source. It holds component classes for the markup that `js/app.js` renders.
 - `css/style.css` is the compiled, minified output. It is committed, so the site still runs with **no build step**.

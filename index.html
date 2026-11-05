@@ -4,11 +4,15 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Chapter Splitter — Split novels into chapter-wise files</title>
-<meta name="description" content="Split any EPUB, TXT, HTML or Markdown novel into files of N chapters. Smart chapter detection, 100% in your browser." />
+<meta name="description" content="Split any EPUB, TXT, HTML or Markdown novel into files of N chapters. Chapters detected automatically, 100% in your browser. Then translate them with the FAST translate Telegram bot." />
 <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
+<meta property="og:title" content="Chapter Splitter" />
+<meta property="og:description" content="Split a novel into chapter-wise files — in your browser." />
+<meta property="og:image" content="img/bot-logo.png" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2318181b'/%3E%3Cpath d='M10 9h5v14h-5zM17 9h5v6h-5zM17 17h5v6h-5z' fill='%23fafafa'/%3E%3C/svg%3E" />
 <link rel="preload" href="fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="fonts/instrument-serif-latin.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="css/style.css" />
 <script>try{const t=localStorage.getItem('cs-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t;if(localStorage.getItem('cs-ui')==='advanced')document.documentElement.classList.add('adv-on');}catch(e){}</script>
 </head>
@@ -23,13 +27,12 @@
       </span>
       <h1 class="truncate text-[15px] font-semibold tracking-tight">Chapter Splitter</h1>
     </a>
-    <div class="flex flex-none items-center gap-2 sm:gap-3">
-      <span class="hidden items-center gap-1.5 text-xs text-zinc-500 md:inline-flex dark:text-zinc-400" title="Your files never leave your device">
-        <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-        Processed locally — nothing is uploaded
-      </span>
-      <span class="hidden h-4 w-px bg-zinc-200 md:block dark:bg-zinc-800" aria-hidden="true"></span>
-      <div class="seg mode-seg" id="uiMode" title="Easy = essentials only · Advanced = all options">
+    <div class="flex flex-none items-center gap-1.5 sm:gap-3">
+      <a href="https://t.me/Mychat9939_bot" target="_blank" rel="noopener" class="bot-pill" title="Translate books with the FAST translate bot on Telegram">
+        <img src="img/bot-logo-64.png" width="22" height="22" alt="" />
+        <span class="hidden sm:inline">Translate</span>
+      </a>
+      <div class="seg mode-seg" id="uiMode" title="Easy = essentials · Advanced = every option">
         <button data-v="simple" class="on">Easy</button>
         <button data-v="advanced">Advanced</button>
       </div>
@@ -43,44 +46,60 @@
 
 <main class="mx-auto flex max-w-5xl flex-col gap-6 px-4 pb-16 pt-10 sm:px-6 sm:pt-14">
 
-  <!-- ============================================================ intro -->
-  <div class="max-w-2xl">
-    <p class="eyebrow">EPUB · TXT · HTML · Markdown</p>
-    <h2 class="mt-3 text-[28px] font-semibold leading-tight tracking-tight text-zinc-950 sm:text-[34px] dark:text-white">Split a novel into chapter-wise files.</h2>
-    <p class="mt-3 text-[15px] leading-7 text-zinc-600 dark:text-zinc-400">Chapters are detected automatically. Choose how many go into each file, pick a format, and download — all inside your browser.</p>
+  <!-- ============================================================ hero -->
+  <div class="hero grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-end">
+    <div class="max-w-2xl">
+      <p class="eyebrow">EPUB · TXT · HTML · Markdown</p>
+      <h2 class="display mt-3">Split a novel,<br class="hidden sm:block" /> <em>chapter by chapter.</em></h2>
+      <p class="lede mt-4">Chapters are found for you. Pick how many go in each file and download.</p>
+      <p class="mt-3 inline-flex items-center gap-1.5 text-[13px] text-zinc-500 dark:text-zinc-400">
+        <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        Runs in your browser · nothing is uploaded
+      </p>
+    </div>
+
+    <!-- bot promo card (whole card is a link) -->
+    <a href="https://t.me/Mychat9939_bot" target="_blank" rel="noopener" class="bot-card" aria-label="Open FAST translate bot on Telegram">
+      <img src="img/bot-logo.webp" width="56" height="56" alt="FAST translate bot logo" class="bot-logo" />
+      <span class="min-w-0 flex-1">
+        <span class="eyebrow block">Telegram bot</span>
+        <b class="block text-[15px] font-semibold tracking-tight">FAST translate</b>
+        <span class="mt-0.5 block text-[13px] leading-5 text-zinc-500 dark:text-zinc-400">Translate your chapters into Hindi &amp; 20+ languages</span>
+      </span>
+      <span class="bot-arrow" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg>
+      </span>
+    </a>
   </div>
 
   <!-- how it works -->
-  <ol id="howto" class="grid gap-4 border-y border-zinc-200 py-5 sm:grid-cols-3 sm:gap-6 dark:border-zinc-800">
-    <li class="howto-step"><span class="h-num">1</span><div><b class="block text-sm font-medium">Choose a file</b><small class="text-[13px]">EPUB or TXT novel</small></div></li>
-    <li class="howto-step"><span class="h-num">2</span><div><b class="block text-sm font-medium">Check chapters</b><small class="text-[13px]">Detected automatically</small></div></li>
-    <li class="howto-step"><span class="h-num">3</span><div><b class="block text-sm font-medium">Download</b><small class="text-[13px]">Pick chapters per file</small></div></li>
+  <ol id="howto" class="howto">
+    <li class="howto-step"><span class="h-num">1</span><b>Choose a file</b></li>
+    <li class="howto-step"><span class="h-num">2</span><b>Check chapters</b></li>
+    <li class="howto-step"><span class="h-num">3</span><b>Download</b></li>
   </ol>
 
   <!-- ============================================================ STEP 1: upload -->
   <section id="step-upload" class="card" aria-labelledby="h-upload">
     <div class="card-head">
       <span class="step-num">1</span>
-      <div class="min-w-0 flex-1">
-        <h2 id="h-upload" class="text-base font-semibold tracking-tight">Choose your novel</h2>
-        <p class="mt-0.5 text-[13px] text-zinc-500 dark:text-zinc-400">Files are read on your device and never leave it.</p>
-      </div>
+      <h2 id="h-upload" class="card-title">Choose your novel</h2>
     </div>
     <div class="card-body">
       <label id="dropzone" class="dropzone" tabindex="0">
         <input id="fileInput" type="file" accept=".epub,.txt,.text,.md,.markdown,.html,.htm,.xhtml" hidden />
-        <span class="mb-3 grid h-10 w-10 place-items-center rounded-lg border border-zinc-200 bg-white text-zinc-500 shadow-xs dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400" aria-hidden="true">
+        <span class="mb-3 grid h-11 w-11 place-items-center rounded-xl border border-zinc-200 bg-white text-zinc-500 shadow-xs dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400" aria-hidden="true">
           <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M20 16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3"/></svg>
         </span>
-        <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100"><span class="underline decoration-zinc-300 underline-offset-4 dark:decoration-zinc-600">Click to choose a file</span> or drag and drop</span>
-        <span class="text-[13px] text-zinc-500 dark:text-zinc-400">.epub, .txt, .html, .md — English, हिंदी, 中文 and more · up to 300 MB</span>
+        <span class="text-[15px] font-medium text-zinc-900 dark:text-zinc-100">Drop a file here or <span class="underline decoration-zinc-300 underline-offset-4 dark:decoration-zinc-600">browse</span></span>
+        <span class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">.epub · .txt · .html · .md &nbsp;—&nbsp; up to 300 MB</span>
       </label>
       <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <button id="sampleBtn" class="btn small ghost outline" type="button">
+        <button id="sampleBtn" class="btn small ghost" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6.5A2.5 2.5 0 0 0 4 21.5v0A2.5 2.5 0 0 0 6.5 24"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>
-          Try with a sample novel
+          Try a sample novel
         </button>
-        <label class="inline adv">Text encoding <span class="help" tabindex="0" data-tip="If a TXT file shows garbled characters (????), change this. 'Auto detect' works for most files.">?</span>
+        <label class="inline adv">Encoding <span class="help" tabindex="0" data-tip="Garbled characters (????) in a TXT file? Change this.">?</span>
           <select id="encoding">
             <option value="auto">Auto detect</option>
             <option value="utf-8">UTF-8</option>
@@ -104,12 +123,9 @@
   <section id="step-chapters" class="card hidden" aria-labelledby="h-chapters">
     <div class="card-head">
       <span class="step-num">2</span>
-      <div class="min-w-0 flex-1">
-        <div class="flex flex-wrap items-center gap-2.5">
-          <h2 id="h-chapters" class="text-base font-semibold tracking-tight">Check chapters</h2>
-          <span id="detectBadge" class="badge"></span>
-        </div>
-        <p class="mt-0.5 text-[13px] text-zinc-500 dark:text-zinc-400">Untick chapters you don't need. Click a title to rename it.</p>
+      <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+        <h2 id="h-chapters" class="card-title">Check chapters</h2>
+        <span id="detectBadge" class="badge"></span>
       </div>
     </div>
     <div class="card-body">
@@ -118,22 +134,22 @@
       <div class="mb-3 flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
         <div class="relative w-full lg:max-w-xs">
           <svg viewBox="0 0 24 24" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input id="search" type="search" class="w-full !pl-9" placeholder="Search chapter titles" aria-label="Search chapter titles" />
+          <input id="search" type="search" class="w-full !pl-9" placeholder="Search chapters" aria-label="Search chapter titles" />
         </div>
         <div class="flex flex-wrap items-center gap-1">
           <button class="btn ghost small" id="selAll">Select all</button>
-          <button class="btn ghost small" id="selNone">Select none</button>
+          <button class="btn ghost small" id="selNone">None</button>
           <button class="btn ghost small adv" id="selInvert">Invert</button>
           <span class="sel-range adv inline-flex items-center gap-1 rounded-lg border border-zinc-200 py-0.5 pl-1 pr-0.5 dark:border-zinc-800">
             <input id="rangeFrom" type="number" min="1" placeholder="From" aria-label="From chapter" class="!w-16 !border-0 !px-1.5 !py-1 !shadow-none" />
             <span class="text-zinc-400">–</span>
             <input id="rangeTo" type="number" min="1" placeholder="To" aria-label="To chapter" class="!w-16 !border-0 !px-1.5 !py-1 !shadow-none" />
-            <button class="btn ghost small" id="selRange">Select range</button>
+            <button class="btn ghost small" id="selRange">Select</button>
           </span>
           <span class="mx-1 hidden h-4 w-px bg-zinc-200 sm:block dark:bg-zinc-800" aria-hidden="true"></span>
-          <button class="btn ghost small" id="resetEdits" title="Revert all renames / merges / splits">
+          <button class="btn ghost small" id="resetEdits" title="Revert all renames, merges and splits">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-            Undo all
+            Undo
           </button>
         </div>
       </div>
@@ -141,48 +157,48 @@
       <div id="frontRow" class="front-row hidden"></div>
       <div class="chapter-table-wrap">
         <table class="chapter-table">
-          <thead><tr><th class="c-chk"><input type="checkbox" id="chkAll" checked title="Select / unselect all" aria-label="Select all chapters" /></th><th class="c-no">#</th><th>Chapter</th><th class="c-words">Words</th><th class="c-act"><span class="sr-only">Actions</span></th></tr></thead>
+          <thead><tr><th class="c-chk"><input type="checkbox" id="chkAll" checked title="Select / unselect all" aria-label="Select all chapters" /></th><th class="c-no">#</th><th>Chapter <span class="font-normal normal-case tracking-normal text-zinc-400">· click to rename</span></th><th class="c-words">Words</th><th class="c-act"><span class="sr-only">Actions</span></th></tr></thead>
           <tbody id="chapterBody"></tbody>
         </table>
-        <div id="emptyChapters" class="empty hidden">No chapters found — try one of the suggestions above.</div>
+        <div id="emptyChapters" class="empty hidden">No chapters found — try a suggestion above.</div>
       </div>
       <div id="moreRow" class="more-row hidden mt-3 text-center"><button class="btn small" id="showMore">Show more</button></div>
 
       <p class="tiny-help mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
         <span class="inline-flex items-center gap-1.5"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>Preview</span>
-        <span class="inline-flex items-center gap-1.5"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Merge into previous</span>
-        <span class="inline-flex items-center gap-1.5"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>Split in two</span>
+        <span class="inline-flex items-center gap-1.5"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Merge up</span>
+        <span class="inline-flex items-center gap-1.5"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>Split</span>
       </p>
 
       <!-- detection settings (advanced) -->
       <details id="detectDetails" class="adv mt-6 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
         <summary class="flex items-center justify-between gap-3 bg-zinc-50 px-4 py-3 dark:bg-zinc-950/40">
           <span>
-            <span class="block text-sm font-medium">Chapter detection settings</span>
-            <small class="text-xs">Only change these if chapters are detected incorrectly.</small>
+            <span class="block text-sm font-medium">Detection settings</span>
+            <small class="text-xs">Only if chapters look wrong</small>
           </span>
           <svg viewBox="0 0 24 24" class="chev h-4 w-4 flex-none text-zinc-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
         </summary>
         <div class="grid gap-8 border-t border-zinc-200 p-4 sm:p-5 md:grid-cols-2 dark:border-zinc-800">
           <div>
             <div id="epubOpts" class="opt-group hidden">
-              <h3 class="section-label">How to read chapters from the EPUB</h3>
+              <h3 class="section-label">EPUB chapter source</h3>
               <div class="seg" id="epubMode">
                 <button data-v="auto" class="on">Auto</button>
-                <button data-v="toc">Table of contents</button>
-                <button data-v="text">Heading text</button>
-                <button data-v="spine">1 HTML file = 1 chapter</button>
+                <button data-v="toc">Contents</button>
+                <button data-v="text">Headings</button>
+                <button data-v="spine">1 file = 1 chapter</button>
               </div>
               <div class="mt-3 flex flex-col gap-2">
                 <label class="inline">TOC depth
-                  <select id="tocDepth"><option value="1">Level 1</option><option value="2">Level 1–2</option><option value="9" selected>All levels</option></select>
+                  <select id="tocDepth"><option value="1">Level 1</option><option value="2">Level 1–2</option><option value="9" selected>All</option></select>
                 </label>
-                <label class="check"><input type="checkbox" id="skipExtras" checked /> Skip cover, copyright and contents pages</label>
+                <label class="check"><input type="checkbox" id="skipExtras" checked /> Skip cover, copyright &amp; contents pages</label>
               </div>
             </div>
 
             <div class="opt-group" id="patternGroup">
-              <h3 class="section-label">Heading patterns <small>— which lines start a new chapter</small></h3>
+              <h3 class="section-label">Heading patterns</h3>
               <div id="patternList" class="pattern-list"></div>
               <label class="block">Custom regex <small class="font-normal">(optional)</small>
                 <input id="customRe" type="text" class="font-mono" placeholder="^Book\s+(\d+)" spellcheck="false" />
@@ -197,9 +213,9 @@
               <label class="block">
                 <span class="flex items-baseline justify-between">Minimum chapter length <span class="text-xs font-normal tabular-nums text-zinc-500"><output id="minCharsOut">200</output> chars</span></span>
                 <input id="minChars" type="range" min="0" max="3000" step="50" value="200" />
-                <small class="hint">Shorter chapters (e.g. table-of-contents entries) are merged into the next one.</small>
+                <small class="hint">Shorter chapters are merged into the next one.</small>
               </label>
-              <label class="check"><input type="checkbox" id="mergeSubtitle" checked /> <span>Add the line below a heading to its title <small class="block">"Chapter 1" + "The Beginning"</small></span></label>
+              <label class="check"><input type="checkbox" id="mergeSubtitle" checked /> Join the line below a heading to its title</label>
               <label class="check"><input type="checkbox" id="blankBefore" /> Require a blank line before headings</label>
             </div>
             <div class="stats" id="stats"></div>
@@ -213,20 +229,17 @@
   <section id="step-split" class="card hidden" aria-labelledby="h-split">
     <div class="card-head">
       <span class="step-num">3</span>
-      <div class="min-w-0 flex-1">
-        <h2 id="h-split" class="text-base font-semibold tracking-tight">Create and download files</h2>
-        <p class="mt-0.5 text-[13px] text-zinc-500 dark:text-zinc-400">Decide how chapters are grouped and choose an output format.</p>
-      </div>
+      <h2 id="h-split" class="card-title">Download</h2>
     </div>
     <div class="card-body">
       <div class="split-grid grid gap-x-10 gap-y-8 md:grid-cols-2">
         <div>
           <div class="opt-group">
-            <h3 class="section-label">How many chapters per file?</h3>
+            <h3 class="section-label">Chapters per file</h3>
             <div class="seg" id="splitMode">
-              <button data-v="per" class="on">Chapters per file</button>
+              <button data-v="per" class="on">Per file</button>
               <button data-v="files">Total files</button>
-              <button data-v="ranges" class="adv">Custom ranges</button>
+              <button data-v="ranges" class="adv">Ranges</button>
             </div>
 
             <div class="mode-panel mt-4" data-mode="per">
@@ -236,7 +249,7 @@
                   <input id="perFile" type="number" min="1" value="10" aria-label="Chapters per file" />
                   <button class="step-btn" data-step="1" data-target="perFile" aria-label="Increase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
                 </div>
-                <span class="text-sm text-zinc-500 dark:text-zinc-400">chapters per file</span>
+                <span class="text-sm text-zinc-500 dark:text-zinc-400">chapters in each file</span>
               </div>
               <div class="presets mt-3" data-target="perFile">
                 <button>1</button><button>5</button><button>10</button><button>20</button><button>25</button><button>50</button><button>100</button>
@@ -249,26 +262,26 @@
                   <input id="fileCount" type="number" min="1" value="5" aria-label="Number of files" />
                   <button class="step-btn" data-step="1" data-target="fileCount" aria-label="Increase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
                 </div>
-                <span class="text-sm text-zinc-500 dark:text-zinc-400">files, chapters split evenly</span>
+                <span class="text-sm text-zinc-500 dark:text-zinc-400">files, split evenly</span>
               </div>
               <div class="presets mt-3" data-target="fileCount">
                 <button>2</button><button>3</button><button>4</button><button>5</button><button>10</button><button>20</button>
               </div>
             </div>
             <div class="mode-panel hidden mt-4" data-mode="ranges">
-              <label class="block !mt-0">Ranges <small class="font-normal">— chapter numbers, comma separated</small>
+              <label class="block !mt-0">Ranges
                 <input id="ranges" type="text" class="font-mono" placeholder="1-10, 11-25, 26-50, 51-" spellcheck="false" />
               </label>
-              <small class="hint"><code>51-</code> = 51 to the end · <code>7</code> = chapter 7 only · Numbers refer to the list of selected chapters.</small>
+              <small class="hint"><code>51-</code> = 51 to end · <code>7</code> = chapter 7 only</small>
             </div>
           </div>
 
           <div class="opt-group">
-            <h3 class="section-label">Output format</h3>
+            <h3 class="section-label">Format</h3>
             <div class="format-cards" id="formatCards">
-              <button data-v="txt" class="on"><b>TXT</b><small>Plain text, opens anywhere</small></button>
-              <button data-v="epub"><b>EPUB</b><small>E-readers, Kindle app</small></button>
-              <button data-v="html"><b>HTML</b><small>Read in a browser</small></button>
+              <button data-v="txt" class="on"><b>TXT</b><small>Opens anywhere</small></button>
+              <button data-v="epub"><b>EPUB</b><small>E-readers, Kindle</small></button>
+              <button data-v="html"><b>HTML</b><small>Browser</small></button>
               <button data-v="md"><b>MD</b><small>Markdown</small></button>
             </div>
           </div>
@@ -281,7 +294,7 @@
               <label class="block !mt-0">Book title <input id="bookTitle" type="text" /></label>
               <label class="block !mt-0">Author <input id="bookAuthor" type="text" placeholder="Optional" /></label>
             </div>
-            <label class="block !mt-0">File name template
+            <label class="block !mt-0">Template
               <input id="template" type="text" class="font-mono" value="{book} - Chapters {range}" spellcheck="false" />
             </label>
             <div class="tokens -mt-1 mb-4" id="tokens">
@@ -289,19 +302,19 @@
             </div>
             <label class="inline">Numbering
               <select id="numbering">
-                <option value="original">Original chapter numbers</option>
-                <option value="sequential">Selected chapters 1, 2, 3…</option>
+                <option value="original">Original numbers</option>
+                <option value="sequential">1, 2, 3… of selected</option>
               </select>
             </label>
           </div>
           <div class="opt-group">
-            <h3 class="section-label">Content options</h3>
-            <label class="check"><input type="checkbox" id="optTitles" checked /> Include chapter titles</label>
-            <label class="check"><input type="checkbox" id="optFront" /> Add front matter (intro, contents) to the first file</label>
-            <label class="check"><input type="checkbox" id="optHeader" /> Book title and author at the top of each file</label>
-            <label class="check"><input type="checkbox" id="optToc" checked /> Table of contents in HTML files</label>
-            <label class="check"><input type="checkbox" id="optCover" checked /> Keep the original cover in EPUB files</label>
-            <label class="check"><input type="checkbox" id="optFolder" checked /> Put files in a folder inside the ZIP</label>
+            <h3 class="section-label">Content</h3>
+            <label class="check"><input type="checkbox" id="optTitles" checked /> Chapter titles</label>
+            <label class="check"><input type="checkbox" id="optFront" /> Front matter in the first file</label>
+            <label class="check"><input type="checkbox" id="optHeader" /> Book title &amp; author at the top</label>
+            <label class="check"><input type="checkbox" id="optToc" checked /> Table of contents (HTML)</label>
+            <label class="check"><input type="checkbox" id="optCover" checked /> Original cover (EPUB)</label>
+            <label class="check"><input type="checkbox" id="optFolder" checked /> Folder inside the ZIP</label>
           </div>
         </div>
       </div>
@@ -310,7 +323,7 @@
     <!-- output plan + actions -->
     <div class="plan rounded-b-xl border-t border-zinc-100 bg-zinc-50/70 px-5 py-5 sm:px-6 dark:border-zinc-800 dark:bg-zinc-950/30">
       <div class="plan-head flex flex-wrap items-center justify-between gap-3">
-        <h3 class="flex flex-wrap items-center gap-2.5 text-sm font-medium">Files to be created <span id="planSummary" class="badge !bg-white dark:!bg-zinc-900"></span></h3>
+        <h3 class="flex flex-wrap items-center gap-2.5 text-sm font-medium">Your files <span id="planSummary" class="badge !bg-white dark:!bg-zinc-900"></span></h3>
         <button class="btn ghost small" id="togglePlan" type="button">Show list</button>
       </div>
       <div id="planErr" class="err hidden"></div>
@@ -319,38 +332,61 @@
       <div class="actions mt-5 flex flex-col gap-2.5 sm:flex-row sm:items-center">
         <button id="downloadZip" class="btn primary big">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>
-          Download all as ZIP
+          Download ZIP
         </button>
-        <button id="downloadEach" class="btn big">Download files separately</button>
-        <span class="text-xs text-zinc-500 sm:ml-auto dark:text-zinc-400"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> downloads the ZIP</span>
+        <button id="downloadEach" class="btn big">Download separately</button>
+        <span class="hidden text-xs text-zinc-500 sm:ml-auto sm:inline dark:text-zinc-400"><kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
       </div>
       <div id="progress" class="progress hidden mt-5"><div class="bar"><span></span></div><div class="ptext"></div></div>
     </div>
   </section>
 
+  <!-- ============================================================ translate bot -->
+  <section id="translate" class="bot-section" aria-labelledby="h-bot">
+    <a href="https://t.me/Mychat9939_bot" target="_blank" rel="noopener" class="bot-hero-logo" aria-label="Open FAST translate bot on Telegram">
+      <img src="img/bot-logo.webp" width="112" height="112" alt="FAST translate bot" />
+    </a>
+    <div class="min-w-0 flex-1">
+      <p class="eyebrow">Next step · Telegram</p>
+      <h2 id="h-bot" class="display small mt-2">Translate them <em>in minutes.</em></h2>
+      <p class="lede mt-3">Send your files to <b class="font-semibold text-zinc-900 dark:text-zinc-100">FAST translate</b>. Chapters, formatting and images stay exactly as they were.</p>
+
+      <ul class="bot-facts mt-5">
+        <li><b>EPUB · PDF · DOCX · TXT · HTML</b><span>In and out, same format</span></li>
+        <li><b>Hindi + 20 languages</b><span>Bengali, Tamil, Telugu, Marathi, Urdu…</span></li>
+        <li><b>Free every day</b><span>1M characters · files up to 2 MB</span></li>
+        <li><b>Plans from ₹15</b><span>Bigger files, no daily limit, fast lane</span></li>
+      </ul>
+
+      <div class="mt-6 flex flex-wrap items-center gap-2.5">
+        <a href="https://t.me/Mychat9939_bot" target="_blank" rel="noopener" class="btn primary big">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.6 18.8 19.3c-.2 1-.9 1.3-1.7.8l-4.8-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.8 8.8-7.9c.4-.3-.1-.5-.6-.2L6.6 13.2 1.9 11.7c-1-.3-1-1 .2-1.5l18.3-7c.9-.3 1.6.2 1.5 1.4z"/></svg>
+          Open @Mychat9939_bot
+        </a>
+        <a href="https://t.me/fasttranslte" target="_blank" rel="noopener" class="btn big">Support channel</a>
+      </div>
+    </div>
+  </section>
+
   <!-- ============================================================ FAQ -->
-  <section class="faq mt-4" aria-labelledby="h-faq">
-    <h2 id="h-faq" class="text-base font-semibold tracking-tight">Questions</h2>
-    <div class="mt-4 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+  <section class="faq" aria-labelledby="h-faq">
+    <h2 id="h-faq" class="eyebrow">Questions</h2>
+    <div class="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
       <details class="group py-4">
-        <summary class="flex items-center justify-between gap-4 text-sm font-medium">What does this tool do?<svg viewBox="0 0 24 24" class="chev h-4 w-4 flex-none text-zinc-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
-        <p class="mt-2 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">It splits a large novel — for example a 500-chapter EPUB — into smaller files, such as 10 chapters per file.</p>
+        <summary class="flex items-center justify-between gap-4 text-sm font-medium">Chapters are wrong or missing<svg viewBox="0 0 24 24" class="chev h-4 w-4 flex-none text-zinc-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">Use the suggestion buttons in step 2. For full control switch to <b class="font-medium text-zinc-900 dark:text-zinc-100">Advanced</b> and open “Detection settings”.</p>
       </details>
       <details class="group py-4">
-        <summary class="flex items-center justify-between gap-4 text-sm font-medium">Chapters are detected incorrectly, or not at all.<svg viewBox="0 0 24 24" class="chev h-4 w-4 flex-none text-zinc-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
-        <p class="mt-2 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">Use the suggestion buttons at the top of step 2. Files with bare numbers as headings ("1.", "002") are fixed by "Numbered headings". For full control, switch to <b class="font-medium text-zinc-900 dark:text-zinc-100">Advanced</b> and open "Chapter detection settings".</p>
+        <summary class="flex items-center justify-between gap-4 text-sm font-medium">Can I skip chapters?<svg viewBox="0 0 24 24" class="chev h-4 w-4 flex-none text-zinc-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">Yes — untick them in step 2. They are left out of every file.</p>
       </details>
       <details class="group py-4">
-        <summary class="flex items-center justify-between gap-4 text-sm font-medium">Can I skip some chapters?<svg viewBox="0 0 24 24" class="chev h-4 w-4 flex-none text-zinc-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
-        <p class="mt-2 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">Yes — untick them in the chapter list in step 2. Unticked chapters are left out of every file.</p>
+        <summary class="flex items-center justify-between gap-4 text-sm font-medium">Kindle?<svg viewBox="0 0 24 24" class="chev h-4 w-4 flex-none text-zinc-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">Choose EPUB, then use Amazon’s “Send to Kindle”.</p>
       </details>
       <details class="group py-4">
-        <summary class="flex items-center justify-between gap-4 text-sm font-medium">How do I read the files on a Kindle?<svg viewBox="0 0 24 24" class="chev h-4 w-4 flex-none text-zinc-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
-        <p class="mt-2 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">Choose EPUB as the output format, then send the files with Amazon's "Send to Kindle" service.</p>
-      </details>
-      <details class="group py-4">
-        <summary class="flex items-center justify-between gap-4 text-sm font-medium">Is my file uploaded anywhere?<svg viewBox="0 0 24 24" class="chev h-4 w-4 flex-none text-zinc-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
-        <p class="mt-2 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">No. Everything happens inside your browser, and the page keeps working offline once loaded.</p>
+        <summary class="flex items-center justify-between gap-4 text-sm font-medium">Is my file uploaded?<svg viewBox="0 0 24 24" class="chev h-4 w-4 flex-none text-zinc-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">No. Everything runs in your browser and works offline once loaded.</p>
       </details>
     </div>
   </section>
@@ -375,9 +411,12 @@
 <div id="toast" class="toast hidden fixed bottom-6 left-1/2 z-[60] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm text-white shadow-pop dark:bg-zinc-100 dark:text-zinc-900" role="status" aria-live="polite"></div>
 
 <footer class="foot border-t border-zinc-200 dark:border-zinc-800">
-  <div class="mx-auto flex max-w-5xl flex-col gap-1 px-4 py-6 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 dark:text-zinc-400">
-    <span>Chapter Splitter</span>
-    <span>All processing happens in your browser. Nothing is uploaded.</span>
+  <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-6 text-xs text-zinc-500 sm:px-6 dark:text-zinc-400">
+    <span class="font-medium text-zinc-700 dark:text-zinc-300">Chapter Splitter</span>
+    <a href="https://t.me/Mychat9939_bot" target="_blank" rel="noopener" class="inline-flex items-center gap-2 hover:text-zinc-900 dark:hover:text-zinc-100">
+      <img src="img/bot-logo-64.png" width="18" height="18" alt="" class="rounded-full" />
+      FAST translate · @Mychat9939_bot
+    </a>
   </div>
 </footer>
 
