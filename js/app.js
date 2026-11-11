@@ -789,4 +789,30 @@
 
   CS.App = { state, detect, loadFile };
   document.addEventListener('DOMContentLoaded', init);
+
+  /* ------------------------------------------------------------------ *
+   * Auto-load: ?load=<url> fetches a text file (through corsproxy.io to
+   * bypass CORS) and hands it to the normal loadFile() pipeline, exactly
+   * as if the user had dropped the file in. Registered after init, so the
+   * UI is fully wired by the time this runs.
+   * ------------------------------------------------------------------ */
+  document.addEventListener('DOMContentLoaded', async () => {
+    const target = new URLSearchParams(location.search).get('load');
+    if (!target) return;
+    let u;
+    try { u = new URL(target); } catch (e) { u = null; }
+    if (!u || !/^https?:$/.test(u.protocol)) { toast('Invalid "load" URL', 5000); return; }
+    try {
+      toast('Fetching ' + u.href + '…', 8000);
+      const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(u.href));
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const text = await res.text();
+      // name the file after the URL; loadFile() picks the parser from the extension
+      let name = decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || 'loaded.txt');
+      if (!/\.(txt|text|md|markdown|html?|xhtml)$/i.test(name)) name += '.txt';
+      await loadFile(new File([text], name, { type: 'text/plain' }));
+    } catch (e) {
+      toast('Could not load "' + target + '": ' + ((e && e.message) || e), 6000);
+    }
+  });
 })(self.CS = self.CS || {});
