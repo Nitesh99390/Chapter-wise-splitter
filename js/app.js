@@ -796,7 +796,7 @@
    * as if the user had dropped the file in. Registered after init, so the
    * UI is fully wired by the time this runs.
    * ------------------------------------------------------------------ */
-  document.addEventListener('DOMContentLoaded', async () => {
+    document.addEventListener('DOMContentLoaded', async () => {
     const target = new URLSearchParams(location.search).get('load');
     if (!target) return;
     let u;
@@ -804,7 +804,7 @@
     if (!u || !/^https?:$/.test(u.protocol)) { toast('Invalid "load" URL', 5000); return; }
     try {
       toast('Fetching ' + u.href + '…', 8000);
-      const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(u.href));
+      const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(u.href));
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const text = await res.text();
       // name the file after the URL; loadFile() picks the parser from the extension
