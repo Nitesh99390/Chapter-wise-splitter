@@ -422,7 +422,7 @@
     });
     body.innerHTML = rows.join('');
     const empty = $('#emptyChapters');
-    empty.textContent = state.chapters.length ? 'No chapters match “' + state.search.trim() + '”.' : 'No chapters found — try a suggestion above.';
+    empty.textContent = state.chapters.length ? 'No chapters match "' + state.search.trim() + '".' : 'No chapters found — try a suggestion above.';
     empty.classList.toggle('hidden', list.length > 0);
     $('#moreRow').classList.toggle('hidden', list.length <= state.shown);
     $('#showMore').textContent = 'Show more (' + fmtNum(list.length - state.shown) + ' remaining)';
@@ -462,7 +462,7 @@
     prev.edited = true;
     state.chapters.splice(i, 1);
     reindex();
-    toast('“' + cur.title + '” merged into the previous chapter');
+    toast('"' + cur.title + '" merged into the previous chapter');
   }
 
   /** blank-line paragraphs or one paragraph per line – decided from the FULL text, same for preview + split */
@@ -480,7 +480,7 @@
     state.chapters.splice(i, 1, a, b);
     reindex();
     closePreview();
-    toast('Chapter split in two: “' + newTitle + '”');
+    toast('Chapter split in two: "' + newTitle + '"');
   }
 
   function reindex() {
@@ -510,7 +510,7 @@
       (paras.length > maxP || big ? '<p><i>… more text follows (the preview only shows the beginning)</i></p>' : '');
     $('#modalBody').onclick = splitMode ? (e => {
       const p = e.target.closest('p.splittable');
-      if (p && confirm('Start a new chapter at this paragraph?\n\n“' + p.textContent.slice(0, 80) + '”')) splitChapterAt(i, +p.dataset.k);
+      if (p && confirm('Start a new chapter at this paragraph?\n\n"' + p.textContent.slice(0, 80) + '"')) splitChapterAt(i, +p.dataset.k);
     }) : null;
     $('#modalPrev').disabled = i <= 0;
     $('#modalNext').disabled = i < 0 || i >= state.chapters.length - 1;
@@ -791,28 +791,93 @@
   document.addEventListener('DOMContentLoaded', init);
 
   /* ------------------------------------------------------------------ *
-   * Auto-load: ?load=<url> fetches a text file (through corsproxy.io to
-   * bypass CORS) and hands it to the normal loadFile() pipeline, exactly
-   * as if the user had dropped the file in. Registered after init, so the
-   * UI is fully wired by the time this runs.
+   * Auto-load: ?load=<url> fetches a text file through CORS proxies
+   * with automatic fallback on failure. Primary: codetabs.com,
+   * fallback: thingproxy / allorigins.
    * ------------------------------------------------------------------ */
-    document.addEventListener('DOMContentLoaded', async () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     const target = new URLSearchParams(location.search).get('load');
     if (!target) return;
+    
     let u;
     try { u = new URL(target); } catch (e) { u = null; }
-    if (!u || !/^https?:$/.test(u.protocol)) { toast('Invalid "load" URL', 5000); return; }
-    try {
-      toast('Fetching ' + u.href + '…', 8000);
-      const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(u.href));
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const text = await res.text();
-      // name the file after the URL; loadFile() picks the parser from the extension
-      let name = decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || 'loaded.txt');
-      if (!/\.(txt|text|md|markdown|html?|xhtml)$/i.test(name)) name += '.txt';
-      await loadFile(new File([text], name, { type: 'text/plain' }));
-    } catch (e) {
-      toast('Could not load "' + target + '": ' + ((e && e.message) || e), 6000);
+    if (!u || !/^https?:$/.test(u.protocol)) {
+      const msg = 'Invalid "load" URL: ' + target;
+      console.error(msg);
+      toast(msg, 6000);
+      return;
     }
+
+    // Proxy configurations with timeout
+    const TIMEOUT_MS = 15000; // 15 seconds per proxy attempt
+    const proxies = [
+      { name: 'CodeTabs', url: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u.href) },
+      { name: 'ThingProxy', url: 'https://thingproxy.freeboard.io/fetch/' + encodeURIComponent(u.href) },
+      { name: 'AllOrigins', url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u.href) }
+    ];
+
+    // Helper: fetch with timeout
+    const fetchWithTimeout = async (url, timeoutMs) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        return res;
+      } catch (e) {
+        clearTimeout(timeoutId);
+        throw e;
+      }
+    };
+
+    // Try each proxy in sequence until one succeeds
+    toast('Fetching ' + u.href + '…', 8000);
+    let lastError = null;
+    
+    for (let i = 0; i < proxies.length; i++) {
+      const proxy = proxies[i];
+      try {
+        console.log(`[Auto-load] Trying ${proxy.name} (${i + 1}/${proxies.length})...`);
+        
+        const res = await fetchWithTimeout(proxy.url, TIMEOUT_MS);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        }
+        
+        const text = await res.text();
+        
+        if (!text || text.length === 0) {
+          throw new Error('Empty response from proxy');
+        }
+        
+        console.log(`[Auto-load] Success via ${proxy.name}, ${text.length} bytes`);
+        
+        // Name the file after the URL; loadFile() picks the parser from the extension
+        let name = decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || 'loaded.txt');
+        if (!/\.(txt|text|md|markdown|html?|xhtml|epub)$/i.test(name)) name += '.txt';
+        
+        await loadFile(new File([text], name, { type: 'text/plain' }));
+        return; // Success - exit
+        
+      } catch (e) {
+        const errMsg = e.name === 'AbortError' ? 'Timeout after ' + (TIMEOUT_MS / 1000) + 's'
+          : (e.message || String(e));
+        lastError = `${proxy.name}: ${errMsg}`;
+        console.warn(`[Auto-load] ${proxy.name} failed: ${errMsg}`);
+        
+        // If this wasn't the last proxy, continue to next
+        if (i < proxies.length - 1) {
+          toast(`${proxy.name} failed, trying fallback…`, 3000);
+          await new Promise(r => setTimeout(r, 500)); // Brief delay between attempts
+        }
+      }
+    }
+    
+    // All proxies failed
+    const finalMsg = 'Could not load "' + target + '" — all proxies failed. Last error: ' + lastError;
+    console.error('[Auto-load]', finalMsg);
+    toast(finalMsg, 6000);
   });
+
 })(self.CS = self.CS || {});
